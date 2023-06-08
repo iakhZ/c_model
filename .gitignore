@@ -1,0 +1,7 @@
+*.c
+*.h
+*.cfg
+*.txt
+*.TXT
+Makefile
+*.json
