@@ -1,7 +1,4 @@
-*.c
-*.h
-*.cfg
-*.txt
-*.TXT
-Makefile
-*.json
+*.o
+*.exe
+*.dpx
+*.dsc
