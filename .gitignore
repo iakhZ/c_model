@@ -2,3 +2,4 @@
 *.exe
 *.dpx
 *.dsc
+.gitignore
