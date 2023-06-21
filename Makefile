@@ -3,7 +3,8 @@ GCCVER =
 #CC = g++
 DEFINES = -D_FILE_OFFSET_BITS=64
 #JFLAGS = -std=c99 -g -Wall
-JFLAGS = -std=gnu99 -O3 -g -Wall
+JFLAGS = -std=gnu99 -g -Wall
+#JFLAGS = -std=gnu99 -O3 -g -Wall
 
 # =================================================================================
 
@@ -51,14 +52,14 @@ test: $(dsc_OBJS)
 % : %.c vdo.h utl.c utl.h dpx.h
 	gcc -O -o $@ $@.c utl.c dpx.c -lm -W -Wall -std=c99
 
-all: test
+gen: test
 
 
 dsc:
 	dsc_test -F test.cfg
 	
 clean:
-	rm -f *.ref.*
-	rm -f *.out.*
-	rm -f *.dsc
+	rm -force *.ref.*
+	rm -force *.out.*
+	rm -force *.dsc
 

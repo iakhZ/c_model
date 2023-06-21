@@ -16,7 +16,7 @@
 *
 *  Without limiting the foregoing, you agree that your use
 *  of this software program does not convey any rights to you in any of
-*  Broadcom’s patent and other intellectual property, and you
+*  Broadcomï¿½s patent and other intellectual property, and you
 *  acknowledge that your use of this software may require that
 *  you separately obtain patent or other intellectual property
 *  rights from Broadcom or third parties.
@@ -181,11 +181,11 @@ void rgb2ycocg(pic_t *ip, pic_t *op, dsc_cfg_t *dsc_cfg)
 
 	half = 1 << (ip->bits-1);
 
-	for (i = dsc_cfg->ystart; i < dsc_cfg->ystart + dsc_cfg->slice_height; i++)
+	for (i = dsc_cfg->ystart; i < dsc_cfg->ystart + dsc_cfg->slice_height; i++)//i: height
 	{
 		if(i >= ip->h)
 			break;
-		for (j = dsc_cfg->xstart; j < dsc_cfg->xstart + dsc_cfg->slice_width; j++)
+		for (j = dsc_cfg->xstart; j < dsc_cfg->xstart + dsc_cfg->slice_width; j++)//j: width
 		{
 			int t;
 			if(j >= ip->w)

@@ -1151,7 +1151,7 @@ void populate_pps(dsc_cfg_t *dsc_codec, int *slicew, int *sliceh)
 	// The following line was added in v1.57g:
 	for (i = 0; i<NUM_BUF_RANGES; ++i)
 	{
-		if (!generateRcParameters)
+		if (!generateRcParameters)//rc params. set in rc.cfg 
 		{
 			dsc_codec->rc_range_parameters[i].range_bpg_offset = rcOffset[i];
 			RANGE_CHECK("range_bpg_offset", dsc_codec->rc_range_parameters[i].range_bpg_offset, -32, 31);
@@ -1373,13 +1373,13 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
-	if (NULL == (list_fp=fopen(fn_i, "rt")))
+	if (NULL == (list_fp=fopen(fn_i, "rt")))//open encode.txt
 	{
 		fprintf(stderr, "Cannot open list file %s for input\n", fn_i);
 		exit(1);
 	}
 
-	if (NULL == (logfp=fopen(fn_log, "wt")))
+	if (NULL == (logfp=fopen(fn_log, "wt")))//open log.txt
 	{
 		fprintf(stderr, "Cannot open list file log.txt for output\n");
 		exit(1);
@@ -1707,10 +1707,10 @@ int main(int argc, char *argv[])
 				fputc('D', bits_fp); fputc('S', bits_fp); fputc('C', bits_fp); fputc('F', bits_fp);
 				write_pps(pps, &dsc_codec);
 				for (i=0; i<PPS_SIZE; ++i)
-					fputc(pps[i], bits_fp);
+					fputc(pps[i], bits_fp);//write a character(pps[i]) to bits_fp
 			}
 		}
-		bufsize = dsc_codec.chunk_size * sliceh;   // Total number of bytes to generate
+		bufsize = dsc_codec.chunk_size * sliceh;   // Total number of bytes to generate //equal pic_h * pic_w
 		slices_per_line = (dsc_codec.pic_width + dsc_codec.slice_width - 1) / dsc_codec.slice_width;
 		buf = (unsigned char **)malloc(sizeof(unsigned char *) * slices_per_line);
 		for (i=0; i<slices_per_line; ++i)

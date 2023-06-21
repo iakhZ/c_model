@@ -15,7 +15,7 @@
 *
 *  Without limiting the foregoing, you agree that your use
 *  of this software program does not convey any rights to you in any of
-*  Broadcom’s patent and other intellectual property, and you
+*  Broadcomï¿½s patent and other intellectual property, and you
 *  acknowledge that your use of this software may require that
 *  you separately obtain patent or other intellectual property
 *  rights from Broadcom or third parties.
@@ -162,7 +162,7 @@ int MapQpToQlevel(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int qp, int cpnt)
 	{
 		qlevel = dsc_state->quantTableChroma[qp];
 		if((dsc_cfg->dsc_version_minor==2) && (dsc_state->cpntBitDepth[0] == dsc_state->cpntBitDepth[1]))  // QP adjustment for YCbCr mode
-			qlevel = MAX(0, qlevel-1);
+			qlevel = MAX(0, qlevel-1); 
 	}
 
 	return (qlevel);
@@ -179,7 +179,7 @@ int QuantizeResidual(int e, int qlevel)
 
 	// *MODEL NOTE* MN_ENC_QUANTIZATION
 	if (e>0)
-		eq = (e + QuantOffset[qlevel]) >> qlevel;
+		eq = (e + QuantOffset[qlevel]) >> qlevel; //quant offset is round value in spec P83
 	else
 		eq = -((QuantOffset[qlevel]-e) >> qlevel);
 	return eq;
@@ -255,20 +255,20 @@ int SamplePredict(
 	int cpnt;
 
 	cpnt = dsc_state->unitCType[unit];
-	h_offset_array_idx = (hPos / SAMPLES_PER_UNIT) * SAMPLES_PER_UNIT + PADDING_LEFT; 
+	h_offset_array_idx = (hPos / SAMPLES_PER_UNIT) * SAMPLES_PER_UNIT + PADDING_LEFT; //hpos + padding_left
 
 	// organize samples into variable array defined in dsc spec
 	c = prevLine[h_offset_array_idx-1];
-	b = prevLine[h_offset_array_idx];
-	d = prevLine[h_offset_array_idx+1];
-	e = prevLine[h_offset_array_idx+2];
+	b = prevLine[h_offset_array_idx];  //0 cpnt
+	d = prevLine[h_offset_array_idx+1];//1 cpnt
+	e = prevLine[h_offset_array_idx+2];//2 cpnt
 	a = currLine[h_offset_array_idx-1];
 
 #define FILT3(a,b,c) (((a)+2*(b)+(c)+2)>>2)
 	filt_c = FILT3(prevLine[h_offset_array_idx-2], prevLine[h_offset_array_idx-1], prevLine[h_offset_array_idx]);
 	filt_b = FILT3(prevLine[h_offset_array_idx-1], prevLine[h_offset_array_idx], prevLine[h_offset_array_idx+1]);
 	filt_d = FILT3(prevLine[h_offset_array_idx], prevLine[h_offset_array_idx+1], prevLine[h_offset_array_idx+2]);
-	filt_e = FILT3(prevLine[h_offset_array_idx+1], prevLine[h_offset_array_idx+2], prevLine[h_offset_array_idx+3]);
+	filt_e = FILT3(prevLine[h_offset_array_idx+1], prevLine[h_offset_array_idx+2], prevLine[h_offset_array_idx+3]); //+3 is 'f' described in spec
 
 	switch (predType) {
 	case PT_MAP:	// MAP prediction
@@ -305,7 +305,7 @@ int SamplePredict(
 		break;
 	default:  // PT_BLOCK+ofs = BLOCK predictor, starts at -1
 		// *MODEL NOTE* MN_BLOCK_PRED
-		bp_offset = (int)predType - (int)PT_BLOCK;
+		bp_offset = (int)predType - (int)PT_BLOCK; // -bp_offset = bp_vector, range from 0 to -12
 		p = currLine[MAX(hPos + PADDING_LEFT - 1 - bp_offset,0)];
 		break;
 	}
@@ -614,11 +614,11 @@ void UpdateHistoryElement(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, unsigned i
 	first_line_flag = (dsc_state->vPos==0) || (dsc_cfg->native_420 && dsc_state->vPos==1);
 
 	// *MODEL NOTE* MN_ICH_UPDATE
-	reserved = first_line_flag ? ICH_SIZE : (ICH_SIZE-ICH_PIXELS_ABOVE);  // space for UL, U, UR
+	reserved = first_line_flag ? ICH_SIZE : (ICH_SIZE-ICH_PIXELS_ABOVE);  // space for UL, U, UR //1st line store 32 history entries
 
 	// Update the ICH with recon as the MRU
 	hit = 0;
-	loc = reserved-1;  // If no match, delete LRU
+	loc = reserved-1;  // If no match, delete LRU  
 	for (j=0; j<reserved; ++j)
 	{
 		if (!dsc_state->history.valid[j])  // Can replace any empty entry
@@ -646,13 +646,13 @@ void UpdateHistoryElement(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, unsigned i
 		// Delete from current position (or delete LRU)
 		for (j=loc; j>0; --j)
 		{
-			dsc_state->history.pixels[cpnt][j] = dsc_state->history.pixels[cpnt][j-1];	
+			dsc_state->history.pixels[cpnt][j] = dsc_state->history.pixels[cpnt][j-1];	//right shift
 		}
 		dsc_state->history.valid[loc] = 1;
 
 		// Insert as most recent
-		dsc_state->history.pixels[cpnt][0] = recon[cpnt];
-		dsc_state->history.valid[0] = 1;
+		dsc_state->history.pixels[cpnt][0] = recon[cpnt];//new data input
+		dsc_state->history.valid[0] = 1;//new data valid
 	}
 }
 
@@ -815,9 +815,9 @@ void UpdateMidpoint(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int **currLine, 
 	start_hPos = hPos - sampModCnt;
 
 	// Apply MPP decision to reconstructed line & update ICH values.  Let's do this in raster order.
-	for (i=0; i<SAMPLES_PER_UNIT; ++i)
+	for (i=0; i<SAMPLES_PER_UNIT; ++i)//Y0 Y1 Y2 / Co0 Co1 Co2 /Cg0 Cg1 Cg2 of an unit
 	{
-		for(unit=0; unit<dsc_state->unitsPerGroup; ++unit)
+		for(unit=0; unit<dsc_state->unitsPerGroup; ++unit)//unit0 1 2 in a group
 		{
 			cpnt = dsc_state->unitCType[unit];
 
@@ -841,8 +841,10 @@ int FindMidpoint(dsc_state_t *dsc_state, int cpnt, int qlevel)
 	// *MODEL NOTE* MN_MIDPOINT_PRED
 	range = 1<<dsc_state->cpntBitDepth[cpnt];
 
-	return (range/2 + (dsc_state->leftRecon[cpnt]%(1<<qlevel)));
+	return (range/2 + (dsc_state->leftRecon[cpnt]%(1<<qlevel))); 
 }
+//the result is same as "prevrecon & ((q<<qlevel)-1)" in spec P80
+//leftrecon is the rightmost recon sample of from the previous group
 
 
 //! Function to decide block vs. MAP & which block prediction vector to use for the next line
@@ -891,7 +893,7 @@ void BlockPredSearch(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int cpnt, int *
 		{
 			for (j=0; j<BP_SIZE; ++j)
 			{
-				for (candidate_vector=0; candidate_vector<BP_RANGE; ++candidate_vector)
+				for (candidate_vector=0; candidate_vector<BP_RANGE; ++candidate_vector)//BP_RANGE = 13
 					dsc_state->lastErr[i][j][candidate_vector] = 0;
 			}
 		}
@@ -903,9 +905,9 @@ void BlockPredSearch(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int cpnt, int *
 	//	      SampToLineBuf(dsc_cfg, dsc_state, currLine[cpnt][hPos+PADDING_LEFT-1], cpnt);
 	recon_x = currLine[cpnt][hPos+PADDING_LEFT];
 	if(hPos>0)
-		pixdiff = recon_x - currLine[cpnt][hPos+PADDING_LEFT-1];
+		pixdiff = recon_x - currLine[cpnt][hPos+PADDING_LEFT-1];//adjacent pixel diff : for edge check
 	else
-		pixdiff = recon_x - (1<<(dsc_state->cpntBitDepth[cpnt]-1));
+		pixdiff = recon_x - (1<<(dsc_state->cpntBitDepth[cpnt]-1));//mid value
 	pixdiff = ABS(pixdiff);
 	if (cpnt == 0)
 		dsc_state->edgeDetected = 0;
@@ -914,22 +916,22 @@ void BlockPredSearch(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int cpnt, int *
 	if (cpnt == max_cpnt)
 	{
 		if (dsc_state->edgeDetected)
-			dsc_state->lastEdgeCount = 0;
+			dsc_state->lastEdgeCount = 0;//meet an edge
 		else
-			dsc_state->lastEdgeCount++;
+			dsc_state->lastEdgeCount++;//How long ago we saw the last edge (for BP)
 	}
 
 	// The BP
-	cursamp = (hPos/PRED_BLK_SIZE) % BP_SIZE;
+	cursamp = (hPos/PRED_BLK_SIZE) % BP_SIZE;//indicate current blk pos of 3 blk.  //blk = 3 pixel, BP_SIZE : 9x1_SAD need 3 blk.
 
-	pixel_mod_cnt = hPos % PRED_BLK_SIZE;
-	for ( candidate_vector=0; candidate_vector<BP_RANGE; candidate_vector++ ) {
-		if ( pixel_mod_cnt == 0 ) {			// predErr is summed over PRED_BLK_SIZE pixels
+	pixel_mod_cnt = hPos % PRED_BLK_SIZE;//indicate current pxl pos in blk(3 pixels)
+	for ( candidate_vector=0; candidate_vector<BP_RANGE; candidate_vector++ ) {//calculate 13(BP_RANGE=13) diff between hpos'sample and prev sample(BP pred or mid)
+		if ( pixel_mod_cnt == 0 ) {	  // predErr is summed over PRED_BLK_SIZE's 3 pixels
 			dsc_state->predErr[cpnt][candidate_vector] = 0;
 		}
 
 		// need to update
-		if(hPos>candidate_vector)
+		if(hPos>candidate_vector)//use pred_x(hpos) = sample(hpos-1-vector)  
 			pred_x = SamplePredict( dsc_state, currLine[cpnt], currLine[cpnt], hPos, (PRED_TYPE)(candidate_vector+PT_BLOCK), 0, cpnt );
 		else
 			pred_x = 1<<(dsc_state->cpntBitDepth[cpnt]-1);
@@ -938,27 +940,27 @@ void BlockPredSearch(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int cpnt, int *
 		//pred_x = SampToLineBuf(dsc_cfg, dsc_state, pred_x, cpnt);
 		//recon_x = SampToLineBuf(dsc_cfg, dsc_state, recon_x, cpnt);
 
-		pixdiff = recon_x - pred_x;
+		pixdiff = recon_x - pred_x;//recon_x = currLine[cpnt][hPos+PADDING_LEFT];
 		pixdiff = ABS(pixdiff);
-		modified_abs_diff = MIN(pixdiff>>(dsc_state->cpntBitDepth[cpnt] - 7), 0x3f);
+		modified_abs_diff = MIN(pixdiff>>(dsc_state->cpntBitDepth[cpnt] - 7), 0x3f);//0x3f = 11_1111b
 		// ABS differences are clamped to 6 bits each, predErr for 3 pixels is 8 bits
 		dsc_state->predErr[cpnt][candidate_vector] += modified_abs_diff;
 	}
 
-	if ( pixel_mod_cnt == PRED_BLK_SIZE - 1 ) 
+	if ( pixel_mod_cnt == PRED_BLK_SIZE - 1 ) //3rd pixel in group
 	{
 		// Track last 3 3-pixel SADs for each component (each is 7 bit)
 		for (candidate_vector=0; candidate_vector<BP_RANGE; ++candidate_vector)
 			dsc_state->lastErr[cpnt][cursamp][candidate_vector] = dsc_state->predErr[cpnt][candidate_vector];
 
-		if (cpnt<max_cpnt)
+		if (cpnt<max_cpnt)//wait until 3rd cpnt of 3rd pxl in a group
 			return;   // SAD is across all 3 components -- wait until we've processed all 3
 
 		for (candidate_vector=0; candidate_vector<BP_RANGE; ++candidate_vector)
 		{
-			bp_sads[candidate_vector] = 0;
+			bp_sads[candidate_vector] = 0;//9X1 SAD
 
-			for (i=0; i<BP_SIZE; ++i)
+			for (i=0; i<BP_SIZE; ++i)//i indicate blk pos in 3 blk (1blk = 3pixels)
 			{
 				int sad3x1 = 0;
 
@@ -968,38 +970,38 @@ void BlockPredSearch(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int cpnt, int *
 				// sad3x1 is 9 bits
 				sad3x1 = MIN(511, sad3x1);
 
-				bp_sads[candidate_vector] += sad3x1;  // 11-bit SAD
+				bp_sads[candidate_vector] += sad3x1;  // 11-bit SAD //9x1sad = three 3x1 sad plus
 			}
 			// Each bp_sad can have a max value of 511 * 3 components = 1533 or 11 bits
 			bp_sads[candidate_vector] >>= 3;  // SAD is truncated to 8-bit for comparison
 		}
 
-		min_err = bp_sads[0];
-		min_pred = PT_MAP;
+		min_err = bp_sads[0];//left adjacent 9x1sad to hpos , corresponding bpvector is -1(actually)
+		min_pred = PT_MAP; //PT_MAP = 0
 		min_bp_vector = 3;
 		max_bp_vector = 10;
 		// Could have moved search range from 6-13 for high throughput mode, but not much performance difference, so going with simpler approach
-		for (candidate_vector=min_bp_vector-1; candidate_vector<=max_bp_vector-1; ++candidate_vector)
+		for (candidate_vector=min_bp_vector-1; candidate_vector<=max_bp_vector-1; ++candidate_vector)//bp_vect: [-3,-10] //modify pred process: -1-ofst=-1+1-vector
 		{
 			// Ties favor smallest vector
 			if (min_err > bp_sads[candidate_vector])
 			{
 				min_err = bp_sads[candidate_vector];
-				min_pred = (PRED_TYPE)(candidate_vector+PT_BLOCK);
+				min_pred = (PRED_TYPE)(candidate_vector+PT_BLOCK);//if bp has smaller err then choose bp 
 			} 
 		}
 
 		if (dsc_cfg->block_pred_enable && (hPos>=9))  // Don't start algorithm until 10th pixel
 		{
 			if (min_pred > PT_BLOCK)
-				dsc_state->bpCount++;
+				dsc_state->bpCount++;//
 			else
 				dsc_state->bpCount = 0;
-		}
-		if ((dsc_state->bpCount>=3) && (dsc_state->lastEdgeCount < BP_EDGE_COUNT))
+		}//below choose BP or MMAP
+		if ((dsc_state->bpCount>=3) && (dsc_state->lastEdgeCount < BP_EDGE_COUNT))//lastEdgeCount: the num of pxl that have passed since last edge (for BP)
 			dsc_state->prevLinePred[hPos/PRED_BLK_SIZE] = (PRED_TYPE)min_pred;
 		else
-			dsc_state->prevLinePred[hPos/PRED_BLK_SIZE] = (PRED_TYPE)PT_MAP;
+			dsc_state->prevLinePred[hPos/PRED_BLK_SIZE] = (PRED_TYPE)PT_MAP;// BP selection decsion buffer (since model calculates BP offset one line ahead of time)
 	}
 }
 
@@ -1037,7 +1039,7 @@ int FindResidualSize(int eq)
 	}
 
 	return size_e;
-}
+	}
 
 
 //! Map QP to quantization level
@@ -1456,7 +1458,7 @@ void VLCUnit(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int unit, int *quantize
 	if (unit==0)
 		dsc_state->prevIchSelected = dsc_state->ichSelected;
 
-	if ((unit == unit_to_send_fflag) && ((dsc_state->groupCount % GROUPS_PER_SUPERGROUP) == 3) && 
+	if ((unit == unit_to_send_fflag) && ((dsc_state->groupCount % GROUPS_PER_SUPERGROUP) == 3) && //1st unit of 4th group in supergroup
 		IsFlatnessInfoSent(dsc_cfg, qp))
 	{
 		if (dsc_state->prevFirstFlat<0)
@@ -1473,10 +1475,10 @@ void VLCUnit(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int unit, int *quantize
 		}
 	}
 	if ((unit == unit_to_send_fpos) && ((dsc_state->groupCount % GROUPS_PER_SUPERGROUP) == 0) && 
-		(dsc_state->firstFlat >= 0))
-	{
+		(dsc_state->firstFlat >= 0))//1st supergroup's 1st unit to send flat signal (if flat)
+	{ //firstFlat: If -1, none of the 4 group set are flat, otherwise indicates which group is the one where flatness starts
 		if (dsc_state->primaryQp >= SOMEWHAT_FLAT_QP_THRESH)
-			AddBits(dsc_cfg, dsc_state, ssp, dsc_state->flatnessType, 1);
+			AddBits(dsc_cfg, dsc_state, ssp, dsc_state->flatnessType, 1);//ssp: cpnt type
 		else
 			dsc_state->flatnessType = 0;
 
@@ -1526,14 +1528,14 @@ void VLCUnit(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int unit, int *quantize
 	}
 
 	if (unit==0) // Escape code becomes size=0 if previous group was ICH mode, all other values get boosted by 1
-		prefix_value += (dsc_state->prevIchSelected && !ich_disallow);
+		prefix_value += (dsc_state->prevIchSelected && !ich_disallow);//y cpnt prefix size +1 (if prev group mode is ICH)
 
 	// Determine if all 3 pixels are withing the quantization error
 	dsc_state->ichSelected = 0;
 	all_orig_within_qerr = 1;
 	for (i=0; i<dsc_state->ichIndicesInGroup; ++i)
 	{
-		if (!dsc_state->origWithinQerr[i])
+		if (!dsc_state->origWithinQerr[i])//Encoder flags indicating that original pixels are within the quantization error
 			all_orig_within_qerr = 0;
 	}
 
@@ -1601,14 +1603,14 @@ void VLCUnit(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int unit, int *quantize
 	
 	// Write bits to output bitstream
 	if (prefix_value == max_pfx_size)  // Trailing "1" can be omitted
-		AddBits(dsc_cfg, dsc_state, ssp, 0, max_pfx_size);
+		AddBits(dsc_cfg, dsc_state, ssp, 0, max_pfx_size);// "000..00" len is max pfx_size
 	else
-		AddBits(dsc_cfg, dsc_state, ssp, 1, prefix_value+1);
+		AddBits(dsc_cfg, dsc_state, ssp, 1, prefix_value+1);//Y's prefix is 1 more    "000...001" len is prefix_val+1
 
 	// *MODEL NOTE* MN_ENC_MPP_SELECT
-	for ( i=0; i<SAMPLES_PER_UNIT; i++ ) 
+	for ( i=0; i<SAMPLES_PER_UNIT; i++ ) //one unit has 3 samples
 	{
-		if (max_size == dsc_state->cpntBitDepth[cpnt] - qlevel)
+		if (max_size == dsc_state->cpntBitDepth[cpnt] - qlevel)//choose MPP, then put bits into sefifo
 		{
 			AddBits(dsc_cfg, dsc_state, ssp, dsc_state->quantizedResidualMid[unit][i], size);
 			if (PRINT_DEBUG_VLC)
@@ -1658,15 +1660,21 @@ void VLCGroup(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, unsigned char **byte_o
 
 	// Check stuffing condition
 	dsc_state->forceMpp = 0;
+
+	
 	// Force MPP mode if buffer fullness is low
 	//  Buffer threshold is ceil(bpp * 3) - 3, the first term is how many
 	//   bits are removed from the model, the second term (3) is the minimum
 	//   number of bits that a group can be coded with		
-	maxBitsPerGroup = (dsc_state->pixelsInGroup * dsc_cfg->bits_per_pixel + 15) >> 4;
+	maxBitsPerGroup = (dsc_state->pixelsInGroup * dsc_cfg->bits_per_pixel + 15) >> 4; //3*bpp=36 removed from buffer
 	adjFullness = dsc_state->bufferFullness;
+
+
 	// Bug fix for DSC 1.1:  check if fractional bpp programmed; if so, change the check to >=
 	bugFixCondition = (dsc_cfg->bits_per_pixel * dsc_state->sliceWidth) & 0xf;   // Fractional bit left at end of slice
-	if( (bugFixCondition && (dsc_state->numBitsChunk + maxBitsPerGroup + 8 == dsc_cfg->chunk_size * 8)) ||
+
+
+	if( (bugFixCondition && (dsc_state->numBitsChunk + maxBitsPerGroup + 8 == dsc_cfg->chunk_size * 8)) ||//numBitsChunk: Number of bits output for the current chunk
 		(dsc_state->numBitsChunk + maxBitsPerGroup + 8 > dsc_cfg->chunk_size * 8))
 	{
 		// End of chunk check to see if there is a potential to underflow 
@@ -1677,7 +1685,7 @@ void VLCGroup(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, unsigned char **byte_o
 	} 
 	else if((!dsc_cfg->vbr_enable) && (dsc_state->pixelCount >= dsc_cfg->initial_xmit_delay))  // underflow isn't possible if we're not removing bits
 	{
-		if (adjFullness  < maxBitsPerGroup - dsc_state->unitsPerGroup)
+		if (adjFullness  < maxBitsPerGroup - dsc_state->unitsPerGroup)//fullness < out - in --> use mpp tp avoid underflow
 			dsc_state->forceMpp = 1;
 	}
 
@@ -1723,10 +1731,10 @@ void VLCGroup(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, unsigned char **byte_o
 		printf( "ERROR: RCB overflow; size is %d, tried filling to %d\n", dsc_cfg->rcb_bits, dsc_state->bufferFullness );
 		exit(1);
 	}
-	dsc_state->codedGroupSize = dsc_state->numBits - dsc_state->prevNumBits;
+	dsc_state->codedGroupSize = dsc_state->numBits - dsc_state->prevNumBits;//numbits - prevnumbits = codedgroupsize
 
 	dsc_state->prevPrimaryQp = dsc_state->primaryQp;
-	dsc_state->groupCountLine++;
+	dsc_state->groupCountLine++;//Group count for current line
 }
 
 
@@ -2062,7 +2070,7 @@ dsc_state_t *InitializeDSCState( dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state )
 	for(i=0; i<MAX_NUM_SSPS; ++i)
 	{
 		fifo_init(&(dsc_state->shifter[i]), (dsc_cfg->mux_word_size + MAX_SE_SIZE + 7) / 8);
-		fifo_init(&(dsc_state->encBalanceFifo[i]), ((dsc_cfg->mux_word_size + MAX_SE_SIZE - 1) * (MAX_SE_SIZE) + 7)/8);
+		fifo_init(&(dsc_state->encBalanceFifo[i]), ((dsc_cfg->mux_word_size + MAX_SE_SIZE - 1) * (MAX_SE_SIZE) + 7)/8);//byte num
 		fifo_init(&(dsc_state->seSizeFifo[i]), (8 * (dsc_cfg->mux_word_size + MAX_SE_SIZE - 1) + 7)/8);
 	}
 
@@ -2171,8 +2179,8 @@ void CalcFullnessOffset(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int vPos, in
 			dsc_state->rcXformOffset -= dsc_cfg->second_line_ofs_adj;
 		}
 	} else {
-		current_bpg_target += -(dsc_cfg->nsl_bpg_offset >> OFFSET_FRACTIONAL_BITS);
-		increment += dsc_cfg->nsl_bpg_offset;
+ 		current_bpg_target += -(dsc_cfg->nsl_bpg_offset >> OFFSET_FRACTIONAL_BITS);
+			increment += dsc_cfg->nsl_bpg_offset;
 	}
 
 	// Account for initial delay boost
@@ -2185,7 +2193,7 @@ void CalcFullnessOffset(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int vPos, in
 		else
 			num_pixels = dsc_state->pixelCount - dsc_state->prevPixelCount;
 		num_pixels = MIN(dsc_cfg->initial_xmit_delay - dsc_state->pixelCount, num_pixels);
-		increment -= (dsc_cfg->bits_per_pixel * num_pixels) << (OFFSET_FRACTIONAL_BITS - 4);
+		increment -= (dsc_cfg->bits_per_pixel * num_pixels) << (OFFSET_FRACTIONAL_BITS - 4); // -4 because bpp = 128 = 8<<4
 	} 
 	else
 	{
@@ -2304,7 +2312,7 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 		
 		qlevel = MapQpToQlevel(dsc_cfg, dsc_state, qp, cpnt);
 
-		if (vPos==0)
+		if (vPos==0) //1st line, PT_LEFT is a special case of MMAP
 		{
 			// Use left predictor.  Modified MAP doesn't make sense since there is no previous line.
 			pred2use = PT_LEFT;
@@ -2340,18 +2348,18 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 			//
 			actual_x = dsc_state->origLine[cpnt][hPos+PADDING_LEFT];
 
-			err_raw = actual_x - pred_x;
+			err_raw = actual_x - pred_x; //residual
 
-			if (sampModCnt==0)
+			if (sampModCnt==0)//1st sample in a group
 				dsc_state->primaryQp = qp;
 
 			qlevel = MapQpToQlevel(dsc_cfg, dsc_state, qp, cpnt);
 
-			err_q = QuantizeResidual( err_raw, qlevel );
+			err_q = QuantizeResidual( err_raw, qlevel );//quantized residual
 
-			err_raw = actual_x - FindMidpoint(dsc_state, cpnt, qlevel);
+			err_raw = actual_x - FindMidpoint(dsc_state, cpnt, qlevel);//quantilize residual for MPP 
 
-			if(g_verbose)
+			if(g_verbose) // the val g_verbose is for debug ?
 				printf("Cpnt %d: ql=%d, pred=%d, act=%d, qr=%d, mp=%d, mqr=%d\n", cpnt, qlevel, pred_x, actual_x, err_q, actual_x - err_raw, QuantizeResidual(err_raw, qlevel));
 
 			assert (residual_index>=0 && residual_index<SAMPLES_PER_UNIT);
@@ -2363,8 +2371,8 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 					
 			// Midpoint residuals need to be bounded to BPC-QP in size, this is for some corner cases:
 			if (dsc_state->quantizedResidualMid[unit][residual_index] > 0)
-				while (FindResidualSize(dsc_state->quantizedResidualMid[unit][residual_index]) > MaxResidualSize(dsc_cfg, dsc_state, cpnt, qp))
-					dsc_state->quantizedResidualMid[unit][residual_index]--;
+				while (FindResidualSize(dsc_state->quantizedResidualMid[unit][residual_index]) > MaxResidualSize(dsc_cfg, dsc_state, cpnt, qp))//while loop: until the condition is not met
+					dsc_state->quantizedResidualMid[unit][residual_index]--; 
 			else
 				while (FindResidualSize(dsc_state->quantizedResidualMid[unit][residual_index]) > MaxResidualSize(dsc_cfg, dsc_state, cpnt, qp))
 					dsc_state->quantizedResidualMid[unit][residual_index]++;
@@ -2389,8 +2397,8 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 		//-----------------------------------------------------------------
 		// reconstruct
 		// *MODEL NOTE* MN_IQ_RECON
-		maxval = (1<<dsc_state->cpntBitDepth[cpnt]) - 1;
-		recon_x = CLAMP(pred_x + (err_q << qlevel), 0, maxval);
+		maxval = (1<<dsc_state->cpntBitDepth[cpnt]) - 1; //cpnt max value
+		recon_x = CLAMP(pred_x + (err_q << qlevel), 0, maxval); // recon cpnt value
 
 		if (dsc_state->isEncoder)
 		{
@@ -2587,7 +2595,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 		if(dsc_cfg->convert_rgb && (i!=0) && (i!=3) && (dsc_cfg->bits_per_component!=16))
 		{
 			range[i] *= 2;
-			dsc_state->cpntBitDepth[i]++;
+			dsc_state->cpntBitDepth[i]++;//the bit depth of co & cg is greater than Y. 
 		}
 	}
 
@@ -2605,14 +2613,14 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 		  	 
 		dsc_state->origLine[cpnt] = (int*) malloc(lbufWidth*sizeof(int));
 		for ( i=0; i<lbufWidth; i++ ) {
-			currLine[cpnt][i] = initValue;
-			prevLine[cpnt][i] = initValue;
+			currLine[cpnt][i] = initValue; //init value is 128
+			prevLine[cpnt][i] = initValue; 
 	  	    //SBR:OPTION 5
 			if (dsc_cfg->native_420 && cpnt == 2)		// Extra chroma buffer
     	        prevLine[cpnt+1][i] = initValue;
 	  	    
 		}
-		for (i=0; i<ICH_SIZE; ++i)
+		for (i=0; i<ICH_SIZE; ++i) //ich size is 32
 			dsc_state->history.pixels[cpnt][i] = initValue;  // Needed for 4:2:0 chroma
 	}
 
@@ -2629,7 +2637,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 	dsc_state->vPos = 0;
 
 	if (isEncoder)
-		PopulateOrigLine(dsc_cfg, dsc_state, pic, 0);
+		PopulateOrigLine(dsc_cfg, dsc_state, pic, 0); //Convert original pixels in pic_t format to an array of unsigned int for easy access
 		
 	vPos = 0;
 	hPos = 0;
@@ -2641,7 +2649,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 	while ( !done ) {
 		dsc_state->vPos = vPos;
 		if(sampModCnt==0)
-			dsc_state->primaryQp = qp=dsc_state->prevQp;
+			dsc_state->primaryQp = qp=dsc_state->prevQp; //update qp in the beginning of a group
 		
 		if ((hPos % dsc_state->pixelsInGroup)==0)
 		{
@@ -2657,15 +2665,15 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 			}
 		}
 
-		PredictionLoop(dsc_cfg, dsc_state, hPos, vPos, sampModCnt, qp);
+		PredictionLoop(dsc_cfg, dsc_state, hPos, vPos, sampModCnt, qp); //P mode 
 
 		// Update QP per group
-		if ((sampModCnt==dsc_state->pixelsInGroup-1) || (hPos==dsc_state->sliceWidth-1))
+		if ((sampModCnt==dsc_state->pixelsInGroup-1) || (hPos==dsc_state->sliceWidth-1))//last pxl in grp || slice boundary
 		{
-			FlatnessAdjustment(dsc_cfg, dsc_state, hPos, qp, new_quant);
+			FlatnessAdjustment(dsc_cfg, dsc_state, hPos, qp, new_quant);//flatness
 		}
 				
-		if(isEncoder)
+		if(isEncoder)//ICH mode
 		{
 			int ichhit, scnt;
 
@@ -2676,7 +2684,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 					dsc_state->origWithinQerr[i] = 1;
 			}
 
-			ichhit = IsOrigWithinQerr(dsc_cfg, dsc_state, hPos, vPos, dsc_state->primaryQp, sampModCnt);
+			ichhit = IsOrigWithinQerr(dsc_cfg, dsc_state, hPos, vPos, dsc_state->primaryQp, sampModCnt); //Encoder function to determine whether current sample is within the quantization error of any ICH entry
 			if (ichhit)
 			{
 				unsigned int orig[NUM_COMPONENTS];
@@ -2685,13 +2693,13 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 				for(i=0; i<dsc_state->numComponents; ++i)
 					orig[i] = dsc_state->origLine[i][PADDING_LEFT+hPos];
 
-				dsc_state->ichLookup[scnt] = PickBestHistoryValue(dsc_cfg, dsc_state, hPos, orig);
+				dsc_state->ichLookup[scnt] = PickBestHistoryValue(dsc_cfg, dsc_state, hPos, orig);// Enc func to select the best history entry & return index
 
 				// Have to do ICH lookup here & remember pixel values
 				if(g_verbose)
 					printf("hPos = %d\n", hPos);
 				HistoryLookup(dsc_cfg, dsc_state, dsc_state->ichLookup[scnt], dsc_state->ichPixels[scnt], hPos,
-                              (vPos==0) || (vPos==1 && dsc_cfg->native_420), vPos%2);
+                              (vPos==0) || (vPos==1 && dsc_cfg->native_420), vPos%2); // Look up the pixel values for a given ICH index
 
 				for (u=0; u < dsc_state->unitsPerGroup; ++u)
 				{
@@ -2713,7 +2721,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 		}
 
 		sampModCnt++;
-		if ( (sampModCnt >= dsc_state->pixelsInGroup ) || (hPos+1 == dsc_state->sliceWidth)) {
+		if ( (sampModCnt >= dsc_state->pixelsInGroup ) || (hPos+1 == dsc_state->sliceWidth)) {//group boundary or slice boundary
 			// Pad partial group at the end of the line
 			if (sampModCnt < dsc_state->pixelsInGroup)
 			{
@@ -2728,16 +2736,16 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 			dsc_state->hPos = hPos;
 
 			if ( isEncoder ) {
-				VLCGroup( dsc_cfg, dsc_state, &cmpr_buf, 0);
+				VLCGroup( dsc_cfg, dsc_state, &cmpr_buf, 0);//force_p1_ich2 = 0
 
 				// If it turned out we needed midpoint prediction, change the reconstructed pixels to use midpoint results
 				UpdateMidpoint(dsc_cfg, dsc_state, currLine, hPos - dsc_state->pixelsInGroup + 1);
 
 				// If it turned out that IC$ was selected, change the reconstructed pixels to use IC$ values
 				if (dsc_state->ichSelected)
-					UseICHistory(dsc_cfg, dsc_state, currLine);
+					UseICHistory(dsc_cfg, dsc_state, currLine);// Encoder function to update the reconstructed samples & output picture if ICH is selected
 
-				for (cpnt=0; cpnt < dsc_state->numComponents; ++cpnt)
+				for (cpnt=0; cpnt < dsc_state->numComponents; ++cpnt)//vlc a group, then update the leftrecon pixel
 				{
 					dsc_state->leftRecon[cpnt] = currLine[cpnt][(MIN(dsc_state->sliceWidth-1, hPos))+PADDING_LEFT];
 				}
@@ -2774,7 +2782,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 						dsc_state->quantizedResidual[unit][i] = dsc_state->quantizedResidualMid[unit][i] = 0;
 				}
 			}
-			else 
+			else //decoder
 			{  
 				if(dsc_state->ichSelected)
 				{
@@ -2840,7 +2848,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 		fflush(g_fp_dbg);
 #endif
 		hPos++;
-		if ( hPos >= dsc_state->sliceWidth ) {
+		if ( hPos >= dsc_state->sliceWidth ) { //while hpos count reachs slice boundary output one line
 			int mod_hPos, op_x, op_y;
 			// end of line
 			// Update block prediction based on real reconstructed values
@@ -2878,7 +2886,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 							case 2: op->data.yuv.v[op_y][op_x] = currLine[cpnt][PADDING_LEFT+mod_hPos]; break;
 							case 3: op->data.yuv.y[op_y][op_x*2+1] = currLine[cpnt][PADDING_LEFT+mod_hPos]; break;
 							}
-						} else {
+						} else {//420 or 444
 							switch(cpnt)
 							{
 							case 0: op->data.yuv.y[op_y][op_x] = currLine[cpnt][PADDING_LEFT+mod_hPos]; break;
@@ -2892,17 +2900,17 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 				fflush(g_fp_dbg);
 #endif
 			}
-
+			//at the end of slice line, update prevline sample (currLine -> prevLine)
 			// reduce number of bits per sample in line buffer (replicate pixels in left/right padding)
 			for ( cpnt = 0; cpnt<dsc_state->numComponents; cpnt++ )
-				for ( i=0; i<lbufWidth; i++ )
+				for ( i=0; i<lbufWidth; i++ )//line buffer width(335) = slice width(320) + PADDING_LEFT(5) + PADDING_RIGHT(10)
 				{
 					int width;
 					width = dsc_state->sliceWidth;
 					if ((dsc_cfg->native_420) && (cpnt == dsc_state->numComponents-1))
                     //SBR:OPTION 5
 					     prevLine[cpnt+(vPos%2)][i] = SampToLineBuf( dsc_cfg, dsc_state, currLine[cpnt][CLAMP(i,PADDING_LEFT,PADDING_LEFT+width-1)], cpnt );
-					else
+					else//444 & 422
 						prevLine[cpnt][i] = SampToLineBuf( dsc_cfg, dsc_state, currLine[cpnt][CLAMP(i,PADDING_LEFT,PADDING_LEFT+width-1)], cpnt );
 				}
 
@@ -2910,7 +2918,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 			for (mod_hPos=0; mod_hPos<dsc_state->sliceWidth; ++mod_hPos)
 			{
 				for (cpnt=0; cpnt<dsc_state->numComponents; ++cpnt)
-					BlockPredSearch(dsc_cfg, dsc_state, cpnt, prevLine, mod_hPos);
+					BlockPredSearch(dsc_cfg, dsc_state, cpnt, prevLine, mod_hPos);//decide block vs. MAP & which block prediction vector to use for the next line
 			}
 
 			hPos = 0;
@@ -2918,7 +2926,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 			if (dsc_state->isEncoder)
 				dsc_state->groupCountLine = 0;
 
-			if ( vPos >= dsc_cfg->slice_height )
+			if ( vPos >= dsc_cfg->slice_height ) //encode complete
 				done = 1;
 			else if (isEncoder)
 				PopulateOrigLine(dsc_cfg, dsc_state, pic, vPos);
@@ -3027,7 +3035,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 	\return          Number of bits in the resulting compressed bitstream */
 int DSC_Encode(dsc_cfg_t *dsc_cfg, pic_t *p_in, pic_t *p_out, unsigned char *cmpr_buf, pic_t **temp_pic, int *chunk_sizes)
 {
-	return DSC_Algorithm(1, dsc_cfg, p_in, p_out, cmpr_buf, temp_pic, chunk_sizes);
+	return DSC_Algorithm(1, dsc_cfg, p_in, p_out, cmpr_buf, temp_pic, chunk_sizes);//1: encoder
 }
 
 

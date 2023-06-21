@@ -15,7 +15,7 @@
 *
 *  Without limiting the foregoing, you agree that your use
 *  of this software program does not convey any rights to you in any of
-*  Broadcom’s patent and other intellectual property, and you
+*  Broadcomï¿½s patent and other intellectual property, and you
 *  acknowledge that your use of this software may require that
 *  you separately obtain patent or other intellectual property
 *  rights from Broadcom or third parties.
@@ -56,8 +56,8 @@
 #define MAX_PIXELS_PER_GROUP  6
 #define GROUPS_PER_SUPERGROUP 4
 #define BP_RANGE              13 ///  was 10, modified for high throughput test modes
-#define BP_SIZE				  3
-#define PRED_BLK_SIZE		  3
+#define BP_SIZE				  3 //BP_SIZE : 9x1_SAD need 3 blk.
+#define PRED_BLK_SIZE		  3 //for bp. 9x1 SAD need 3 blks, 1 blk need 3 pixels(this param)
 #define ICH_BITS			  5
 #define ICH_SIZE			  (1<<ICH_BITS)
 #define ICH_PIXELS_ABOVE      7
@@ -78,7 +78,7 @@
 #define OVERFLOW_AVOID_THRESHOLD  (dsc_cfg->native_422 ? -224 : -172)
 #define LARGE_INT			 (1<<30)
 
-typedef enum { PT_MAP=0, PT_LEFT, PT_BLOCK } PRED_TYPE;
+typedef enum { PT_MAP=0, PT_LEFT, PT_BLOCK } PRED_TYPE;//0 1 2
 
 #define NUM_PRED_TYPES        (PT_BLOCK+BP_RANGE)
 
