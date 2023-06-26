@@ -1,0 +1,9 @@
+Filename: t_Barbara.ppm
+8.00 bits/pixel, 8 bits/component, RGB, 4:4:4, 1920x1080 slices, block_pred_enable=0
+
+G -- x: 1248, y: 256, maxErrG = 14 ///
+
+B -- x: 486, y: 833, maxErrB = 17 ///
+
+R -- x: 919, y: 945, maxErrR = 17 ///
+PSNR over RGB channels =  43.40  Max{|error|} =   17   (R =  17, G =  14, B =  17)   

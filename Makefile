@@ -52,14 +52,16 @@ test: $(dsc_OBJS)
 % : %.c vdo.h utl.c utl.h dpx.h
 	gcc -O -o $@ $@.c utl.c dpx.c -lm -W -Wall -std=c99
 
-gen: test
+all: test 
 
 
 dsc:
 	dsc_test -F test.cfg
 	
 clean:
-	rm -force *.ref.*
-	rm -force *.out.*
-	rm -force *.dsc
+	rm -f *.o
+	rm -f *.exe
+	rm -f *.ref.*
+	rm -f *.out.*
+	rm -f *.dsc
 

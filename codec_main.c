@@ -1134,7 +1134,7 @@ void populate_pps(dsc_cfg_t *dsc_codec, int *slicew, int *sliceh)
 	target_bpp_x16 = (int)(bitsPerPixel * 16 + 0.5);
 	dsc_codec->bits_per_pixel = target_bpp_x16;
 
-	RANGE_CHECK("bits_per_pixel (*16)", target_bpp_x16, 96, 1023);
+	RANGE_CHECK("bits_per_pixel (*16)", target_bpp_x16, 48, 1023);
 
 	dsc_codec->rc_edge_factor = rcEdgeFactor;
 	RANGE_CHECK("rc_edge_factor", dsc_codec->rc_edge_factor, 0, 15);

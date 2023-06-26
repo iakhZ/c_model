@@ -15,7 +15,7 @@
 *
 *  Without limiting the foregoing, you agree that your use
 *  of this software program does not convey any rights to you in any of
-*  Broadcom’s patent and other intellectual property, and you
+*  Broadcomï¿½s patent and other intellectual property, and you
 *  acknowledge that your use of this software may require that
 *  you separately obtain patent or other intellectual property
 *  rights from Broadcom or third parties.
@@ -94,7 +94,8 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 					case 0:
 						err = p_out->data.rgb.r[ycnt][xcnt] - p_in->data.rgb.r[ycnt][xcnt];
 						if (abs(err) > maxErrR) {
-							maxErrR = abs(err);							
+							maxErrR = abs(err);	
+							fprintf(logfp, "R -- x: %d, y: %d, maxErrR = %d\n",xcnt, ycnt, maxErrR);						
 						}			
 #ifdef GENERATE_ERROR_IMAGE
 						p_out->data.rgb.r[ycnt][xcnt] = 512 + err;
@@ -103,7 +104,8 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 					case 1:
 						err = p_out->data.rgb.g[ycnt][xcnt] - p_in->data.rgb.g[ycnt][xcnt];
 						if (abs(err) > maxErrG) {
-							maxErrG = abs(err);							
+							maxErrG = abs(err);	
+							fprintf(logfp, "G -- x: %d, y: %d, maxErrG = %d\n",xcnt, ycnt, maxErrG);							
 						}							
 #ifdef GENERATE_ERROR_IMAGE
 						p_out->data.rgb.g[ycnt][xcnt] = 512 + err;
@@ -112,7 +114,8 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 					case 2:
 						err = p_out->data.rgb.b[ycnt][xcnt] - p_in->data.rgb.b[ycnt][xcnt];
 						if (abs(err) > maxErrB) {
-							maxErrB = abs(err);							
+							maxErrB = abs(err);	
+							fprintf(logfp, "B -- x: %d, y: %d, maxErrB = %d\n",xcnt, ycnt, maxErrB);							
 						}							
 #ifdef GENERATE_ERROR_IMAGE
 						p_out->data.rgb.b[ycnt][xcnt] = 512 + err;
@@ -132,7 +135,7 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 		}
 		fprintf(logfp, "Max{|error|} = %4d   (R =%4d, G =%4d, B =%4d)   \n", MAX(maxErrR, MAX(maxErrG, maxErrB)), maxErrR, maxErrG, maxErrB);
 
-	} else {
+	} else {//yuv
 
 		for(ycnt=0; ycnt<p_in->h; ycnt++) 
 		{

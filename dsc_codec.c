@@ -263,8 +263,8 @@ int SamplePredict(
 	d = prevLine[h_offset_array_idx+1];//1 cpnt
 	e = prevLine[h_offset_array_idx+2];//2 cpnt
 	a = currLine[h_offset_array_idx-1];
-
 #define FILT3(a,b,c) (((a)+2*(b)+(c)+2)>>2)
+//#define FILT3(a,b,c) (((a)+(b)+(c))/3)
 	filt_c = FILT3(prevLine[h_offset_array_idx-2], prevLine[h_offset_array_idx-1], prevLine[h_offset_array_idx]);
 	filt_b = FILT3(prevLine[h_offset_array_idx-1], prevLine[h_offset_array_idx], prevLine[h_offset_array_idx+1]);
 	filt_d = FILT3(prevLine[h_offset_array_idx], prevLine[h_offset_array_idx+1], prevLine[h_offset_array_idx+2]);
@@ -477,14 +477,14 @@ void HistoryLookup(dsc_cfg_t *dsc_cfg, dsc_state_t* dsc_state, int entry, unsign
 
 	memset(p, 0, sizeof(unsigned int) * NUM_COMPONENTS); // Fix compiler warning
 
-	reserved = ICH_SIZE-ICH_PIXELS_ABOVE;
+	reserved = ICH_SIZE-ICH_PIXELS_ABOVE;//32-7=25
 
 	hPos = (hPos/dsc_state->pixelsInGroup)*dsc_state->pixelsInGroup + (dsc_state->pixelsInGroup/2);  // Center pixel of group as reference
 	if (dsc_cfg->native_420 || dsc_cfg->native_422)
 		hPos = CLAMP(hPos, 2, dsc_state->sliceWidth-1-2);  // Keeps upper line history entries unique at left & right edge
 	else
 		hPos = CLAMP(hPos, ICH_PIXELS_ABOVE/2, dsc_state->sliceWidth-1-(ICH_PIXELS_ABOVE/2));  // Keeps upper line history entries unique at left & right edge
-	if (!first_line_flag && (entry >= reserved))
+	if (!first_line_flag && (entry >= reserved))//if entry >= reserved , use prevline 7 pixels
 	{
 		if (dsc_cfg->native_420)
 		{
@@ -520,7 +520,7 @@ void HistoryLookup(dsc_cfg_t *dsc_cfg, dsc_state_t* dsc_state, int entry, unsign
 		} 
 		else
 		{
-			p[0] = dsc_state->prevLine[0][hPos+(entry-reserved) - (ICH_PIXELS_ABOVE/2)  +PADDING_LEFT];
+			p[0] = dsc_state->prevLine[0][hPos+(entry-reserved) - (ICH_PIXELS_ABOVE/2)  +PADDING_LEFT];//reserved=25
 			p[1] = dsc_state->prevLine[1][hPos+(entry-reserved) - (ICH_PIXELS_ABOVE/2)  +PADDING_LEFT];
 			p[2] = dsc_state->prevLine[2][hPos+(entry-reserved) - (ICH_PIXELS_ABOVE/2)  +PADDING_LEFT];
 		}
@@ -618,16 +618,16 @@ void UpdateHistoryElement(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, unsigned i
 
 	// Update the ICH with recon as the MRU
 	hit = 0;
-	loc = reserved-1;  // If no match, delete LRU  
+	loc = reserved-1;  // If no match, delete LRU( least recent use )  // loc initial equal 31 or 24 
 	for (j=0; j<reserved; ++j)
 	{
-		if (!dsc_state->history.valid[j])  // Can replace any empty entry
+		if (!dsc_state->history.valid[j])  // Can replace any empty entry 
 		{
-			loc = j;
+			loc = j;//loc is the first invalid place // if all entries are valid, loc is 31 or 24
 			break;
 		}
-		HistoryLookup(dsc_cfg, dsc_state, j, ich_pixel, dsc_state->hPos, first_line_flag, dsc_state->vPos%2);  // Specific hPos within group is not critical 
-																					// since hits against UL/U/UR don't have specific detection
+		HistoryLookup(dsc_cfg, dsc_state, j, ich_pixel, dsc_state->hPos, first_line_flag, dsc_state->vPos%2);  // Specific hPos within group is not critical  //HistoryLookup: Look up the pixel values for a given ICH index
+		// since hits against UL/U/UR don't have specific detection
 		hit = 1;
 		for (cpnt=0; cpnt<dsc_state->numComponents; ++cpnt)
 		{
@@ -728,10 +728,10 @@ void UpdateICHistory(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int **currLine,
 	// Reset ICH at beginning of each line if multiple slices per line
 	if (hPos==0)
 	{
-		if (vPos == 0)            // Beginning of slice
+		if (vPos == 0)            // Beginning of slice (1st slice line)
 		{
-			for (i=0; i<ICH_SIZE; ++i)
-				dsc_state->history.valid[i] = 0;
+			for (i=0; i<ICH_SIZE; ++i)//ICH_SIZE = 32
+				dsc_state->history.valid[i] = 0; //Valid bits for each pixel in the history (position 0 is MRU)
 		}
 		else if (dsc_cfg->slice_width != dsc_cfg->pic_width)   // Multiple slices per line
 		{
@@ -2646,7 +2646,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 	new_quant = 0;
 	qp = 0;
 
-	while ( !done ) {
+	while ( !done ) {//process 1 frame
 		dsc_state->vPos = vPos;
 		if(sampModCnt==0)
 			dsc_state->primaryQp = qp=dsc_state->prevQp; //update qp in the beginning of a group
