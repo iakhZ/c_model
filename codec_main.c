@@ -50,6 +50,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <windows.h>
 
 #include "vdo.h"
 #include "dsc_types.h"
@@ -2095,8 +2097,18 @@ int main(int argc, char *argv[])
 			fprintf(logfp, "\n%2.2f bits/pixel, %d bits/component,", dsc_codec.bits_per_pixel / 16.0, dsc_codec.bits_per_component);
 		fprintf(logfp, " %s, %s,", useYuvInput ? "YUV" : "RGB", (dsc_codec.native_422 || dsc_codec.simple_422) ? "4:2:2" : ((dsc_codec.native_420) ? "4:2:0" : "4:4:4"));
 		fprintf(logfp, " %dx%d slices, block_pred_enable=%d\n", dsc_codec.slice_width, dsc_codec.slice_height, dsc_codec.block_pred_enable);
+		
+
+		
+
+		//********PSNR RUN TIME PRINT*******//
+		clock_t start_psnr,stop_psnr;//cal func run time
+		double duration;
+
+		start_psnr = clock();//psnr start time
 		if(ref_pic)
 		{
+
 			compute_and_display_PSNR(ref_pic, op_dsc, op_dsc->bits, logfp);
 
 			if (ref_pic != ip)
@@ -2106,6 +2118,14 @@ int main(int argc, char *argv[])
 		{
 			fprintf(logfp, "PSNR was not computed, original picture could not be read\n");
 		}
+		stop_psnr = clock();//psnr stop time
+		duration = ((double)(stop_psnr-start_psnr))/CLK_TCK;
+		fprintf(logfp, "PSNR cal spend time : %lf\n", duration);//print psnr cal time to log
+		fprintf(logfp, "current time : %lf\n", stop_psnr);//print psnr cal time to log
+		//**************************************//
+
+
+
 		if(ip)
 			pdestroy(ip);
 
