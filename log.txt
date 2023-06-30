@@ -1,9 +1,7 @@
 Filename: t_Barbara.ppm
 8.00 bits/pixel, 8 bits/component, RGB, 4:4:4, 1920x1080 slices, block_pred_enable=0
-PSNR over RGB channels =  43.40  
-PSNR modified( var ) =  42.83  
-PSNR modified(count) =  38.40  
-Max{|error|} =   17   (R =  17, G =  14, B =  17)   
-counter = 584 
-PSNR cal spend time : 12.125000
-current time : 0.000000
+PSNR over RGB channels =  42.99  
+PSNR modified( var & average ) =  42.49  
+PSNR modified( count ) =  36.99  
+Max{|error|} =   18   (R =  18, G =  14, B =  18)   
+PSNR cal spend time : 2.395000

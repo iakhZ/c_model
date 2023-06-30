@@ -6,7 +6,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/dsc_test.exe",
             "args": [
-            "-Ftest.cfg"//can't be  "-F test.cfg" , otherwise it will report error
+            //"-Ftest.cfg"//can't be  "-F test.cfg" , otherwise it will report error
             ],
             "stopAtEntry": true,
             "cwd": "${fileDirname}",

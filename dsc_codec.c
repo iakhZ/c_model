@@ -283,18 +283,59 @@ int SamplePredict(
 		blend_e = e + diff;
 		
 		// Pixel on line above off the raster to the left gets same value as pixel below (ie., midpoint)
-		if (hPos/SAMPLES_PER_UNIT == 0)
-			blend_c = a;
-		
-		if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
-			p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
-		else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
-			p = CLAMP(a + blend_d - blend_c + (dsc_state->quantizedResidual[unit][0] * QuantDivisor[qLevel]),
-				        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
-		else    // Third pixel of group
-			p = CLAMP(a + blend_e - blend_c + (dsc_state->quantizedResidual[unit][0] + dsc_state->quantizedResidual[unit][1])*QuantDivisor[qLevel],
-						MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
-		break;
+		//if (hPos/SAMPLES_PER_UNIT == 0)
+		//	blend_c = a;
+		//
+		//if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
+		//	p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
+		//else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
+		//	p = CLAMP(a + blend_d - blend_c + (dsc_state->quantizedResidual[unit][0] * QuantDivisor[qLevel]),
+		//		        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
+		//else    // Third pixel of group
+		//	p = CLAMP(a + blend_e - blend_c + (dsc_state->quantizedResidual[unit][0] + dsc_state->quantizedResidual[unit][1])*QuantDivisor[qLevel],
+		//				MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
+		//break;
+
+
+
+
+
+
+		if(hPos < SAMPLES_PER_UNIT)
+		{
+			if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
+				p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
+			else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
+				p = CLAMP(a + blend_d - blend_c + (dsc_state->quantizedResidual[unit][0] * QuantDivisor[qLevel]),
+					        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
+			else    // Third pixel of group
+				p = CLAMP(a + blend_e - blend_c + (dsc_state->quantizedResidual[unit][0] + dsc_state->quantizedResidual[unit][1])*QuantDivisor[qLevel],
+							MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
+		}
+		else
+		{
+			if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
+				p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
+			else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
+				p = CLAMP(a + blend_d - blend_c + (dsc_state->quantizedResidual_prev[unit][2] * QuantDivisor[qLevel]),
+					        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
+			else    // Third pixel of group
+				p = CLAMP(a + blend_e - blend_c + (dsc_state->quantizedResidual_prev[unit][2] + dsc_state->quantizedResidual_prev[unit][2])*QuantDivisor[qLevel],
+							MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
+			break;
+		}
+
+
+
+
+
+
+
+
+
+
+
+
 	case PT_LEFT:
 		p = a;    // First pixel of group
 		if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
@@ -1062,9 +1103,9 @@ int IsOrigFlatHIndex(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos)
 	int max, min;
 	int p;
 	int thresh[NUM_COMPONENTS], qp;
-	int somewhat_flat = 1, very_flat = 1;
+	int somewhat_flat = 1, very_flat = 1; //if not satisfied set to 0
 	int vf_thresh;
-	int fc1_start, fc1_end, fc2_start, fc2_end;
+	int fc1_start, fc1_end, fc2_start, fc2_end;//fc: flatness check
 
 	fc1_start = 0; fc1_end = 4; fc2_start = 1; fc2_end = 7;
 
@@ -2363,6 +2404,8 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 				printf("Cpnt %d: ql=%d, pred=%d, act=%d, qr=%d, mp=%d, mqr=%d\n", cpnt, qlevel, pred_x, actual_x, err_q, actual_x - err_raw, QuantizeResidual(err_raw, qlevel));
 
 			assert (residual_index>=0 && residual_index<SAMPLES_PER_UNIT);
+			//current group residual store as previous group residual(modified)
+			dsc_state->quantizedResidual_prev[unit][residual_index] = dsc_state->quantizedResidual[unit][residual_index];
 			// store to array
 			dsc_state->quantizedResidual[unit][residual_index] = err_q;
 

@@ -2121,7 +2121,7 @@ int main(int argc, char *argv[])
 		stop_psnr = clock();//psnr stop time
 		duration = ((double)(stop_psnr-start_psnr))/CLK_TCK;
 		fprintf(logfp, "PSNR cal spend time : %lf\n", duration);//print psnr cal time to log
-		fprintf(logfp, "current time : %lf\n", stop_psnr);//print psnr cal time to log
+
 		//**************************************//
 
 

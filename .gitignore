@@ -4,3 +4,4 @@
 *.dsc
 .gitignore
 *.bmp
+*.ppm

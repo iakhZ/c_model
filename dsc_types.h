@@ -167,6 +167,7 @@ typedef struct dsc_state_s {
 	int stQp;				///< QP from RC
 	int prevQp;		  		///< QP for previous group from RC
 	int quantizedResidual[MAX_UNITS_PER_GROUP][SAMPLES_PER_UNIT];  ///< Quantized residuals for current group
+	int quantizedResidual_prev[MAX_UNITS_PER_GROUP][SAMPLES_PER_UNIT];  ///< Quantized residuals for previous group (modified)
 	int quantizedResidualMid[MAX_UNITS_PER_GROUP][SAMPLES_PER_UNIT];  ///< Quantized residuals assuming midpoint prediction for current group
 	int rcSizeUnit[MAX_UNITS_PER_GROUP];  ///< Size for each unit assuming size was perfectly predicted
 	int rcSizeGroup;		///< Sum of RcSizeUnits for previous group
