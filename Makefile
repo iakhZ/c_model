@@ -21,6 +21,7 @@ dsc_DEFS = \
 	psnr.h \
 	utl.h \
 	vdo.h \
+	dsc_opt.h
 
 dsc_SRCS = \
 	dsc_codec.c \
@@ -57,6 +58,13 @@ all: test
 
 dsc:
 	dsc_test -F test.cfg
+
+
+psnr:
+	rm -f test_psnr.o psnr.o test_psnr.exe
+	gcc -c utl.c logging.c test_psnr.c  psnr.c
+	gcc utl.o logging.o test_psnr.o  psnr.o  -o  psnr_test
+	./psnr_test.exe
 	
 clean:
 	rm -f *.o

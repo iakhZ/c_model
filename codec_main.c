@@ -1754,7 +1754,7 @@ int main(int argc, char *argv[])
 
 				buf2 = buf[xs];
 				numslices = ((dsc_codec.pic_width+dsc_codec.slice_width-1)/dsc_codec.slice_width) * ((dsc_codec.pic_height+sliceh-1)/sliceh);
-				printf("Processing slice %d / %d\r", ++slicecount, numslices);
+				printf("Processing slice %d / %d\n", ++slicecount, numslices); //ATTENTION '\r' -> '\n'
 				fflush(stdout);  // For Bob.
 				if(function != 2)
 					memset(buf2, 0, bufsize);

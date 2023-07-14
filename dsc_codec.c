@@ -59,6 +59,9 @@
 #include "dsc_codec.h"
 #include "dsc_types.h"
 #include "multiplex.h"
+#include "dsc_opt.h" //used for optimazing dsc algorithm
+
+
 
 //#define USE_MSE_FOR_ICH  1
 
@@ -273,6 +276,9 @@ int SamplePredict(
 	switch (predType) {
 	case PT_MAP:	// MAP prediction
 		// *MODEL NOTE* MN_MMAP
+
+
+	//original mmap algorithm
 		diff = CLAMP(filt_c - c, -(QuantDivisor[qLevel]/2), QuantDivisor[qLevel]/2);
 		blend_c = c + diff;
 		diff = CLAMP(filt_b - b, -(QuantDivisor[qLevel]/2), QuantDivisor[qLevel]/2);
@@ -281,26 +287,23 @@ int SamplePredict(
 		blend_d = d + diff;
 		diff = CLAMP(filt_e - e, -(QuantDivisor[qLevel]/2), QuantDivisor[qLevel]/2);
 		blend_e = e + diff;
-		
+
+
+#ifndef MMAP_OPT
 		// Pixel on line above off the raster to the left gets same value as pixel below (ie., midpoint)
-		//if (hPos/SAMPLES_PER_UNIT == 0)
-		//	blend_c = a;
-		//
-		//if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
-		//	p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
-		//else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
-		//	p = CLAMP(a + blend_d - blend_c + (dsc_state->quantizedResidual[unit][0] * QuantDivisor[qLevel]),
-		//		        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
-		//else    // Third pixel of group
-		//	p = CLAMP(a + blend_e - blend_c + (dsc_state->quantizedResidual[unit][0] + dsc_state->quantizedResidual[unit][1])*QuantDivisor[qLevel],
-		//				MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
-		//break;
+		if (hPos/SAMPLES_PER_UNIT == 0)
+			blend_c = a;
+		if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
+			p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
+		else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
+			p = CLAMP(a + blend_d - blend_c + (dsc_state->quantizedResidual[unit][0] * QuantDivisor[qLevel]),
+				        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
+		else    // Third pixel of group
+			p = CLAMP(a + blend_e - blend_c + (dsc_state->quantizedResidual[unit][0] + dsc_state->quantizedResidual[unit][1])*QuantDivisor[qLevel],
+						MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
+		break;
 
-
-
-
-
-
+#else
 		if(hPos < SAMPLES_PER_UNIT)
 		{
 			if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
@@ -325,7 +328,7 @@ int SamplePredict(
 			break;
 		}
 
-
+#endif
 
 
 
@@ -2404,8 +2407,20 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 				printf("Cpnt %d: ql=%d, pred=%d, act=%d, qr=%d, mp=%d, mqr=%d\n", cpnt, qlevel, pred_x, actual_x, err_q, actual_x - err_raw, QuantizeResidual(err_raw, qlevel));
 
 			assert (residual_index>=0 && residual_index<SAMPLES_PER_UNIT);
-			//current group residual store as previous group residual(modified)
+
+
+
+
+			//***************************************************************************************************//
+			//current group residual store as previous group residual(optimized) before 
 			dsc_state->quantizedResidual_prev[unit][residual_index] = dsc_state->quantizedResidual[unit][residual_index];
+
+			//***************************************************************************************************//
+
+
+
+
+
 			// store to array
 			dsc_state->quantizedResidual[unit][residual_index] = err_q;
 
@@ -2596,9 +2611,9 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 
 #ifdef PRINTDEBUG
 	if(isEncoder)
-		g_fp_dbg = fopen("log_encode.txt","wt");
+		g_fp_dbg = fopen("log_enc_debug.txt","wt");
 	else
-		g_fp_dbg = fopen("log_decode.txt","wt");
+		g_fp_dbg = fopen("log_dec_debug.txt","wt");
 #endif
 
 	orig_op = op;
