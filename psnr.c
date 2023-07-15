@@ -60,11 +60,11 @@
 #include "dsc_opt.h" //used for optimazing dsc algorithm
 
 
-#define VAR_DIV		2	//used to divide var sum (shift)
+#define VAR_MUL		2	//used to divide var sum 
 #define DISTANCE	3	//used to determine the distance between two consecutive abnormal pixel
 #define AVE_LEN 	4	//number of consecutive pixels used to calculate the average/var/standard
 #define CNT_SH		7   //single abnormal pixels count, shift then add to psnr (adjust according to picture's w&h?)
-#define AVE_THRE	10	//average value threshold
+#define AVE_THRE	30	//average value threshold
 
 
 /*
@@ -100,7 +100,7 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 	double sum[3] 	   = {0,0,0}; //recent 10 pixel cpnt err sum
 	double var[3] 	   = {0,0,0}; //recent 10 pixel cpnt var
 	double average[3]  = {0,0,0}; //recent 10 pixel cpnt average, equals to "sum/ave_num"
-	double standard[3] = {0,0,0}; //recent 10 pixel cpnt standard, equals to var^0.5
+	//double standard[3] = {0,0,0}; //recent 10 pixel cpnt standard, equals to var^0.5
 
 	double mse_plus_var = 0.0; //use sumSqrError_plus_var to calculate mse
 	double sumSqrError_plus_var = 0.0; //sumSqrError + sumVar
@@ -163,33 +163,17 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 
 	
 #ifdef PSNR_OPT
-					pxl_err_reg[AVE_LEN-1][ch] = abs(err);	//reg[9] store newest pixel
+					pxl_err_reg[AVE_LEN-1][ch] = abs(err);	//reg[last] store newest pixel
 					sum[ch] += abs(err)-pxl_err_reg[0][ch]; //sum = sum + newest -oldest
 
 					if(abs(err)>10) counter++; //count the num of condition (diff of pic_i & pic_o)
-#endif	
-				}//pixel end
 
-				
-
-#ifdef PSNR_OPT
-				for(i=0;i<AVE_LEN-1;i++)//10 shift_reg store recent 10 pxl error
-				{
-					for(ch=0;ch<3;ch++)
+				//------
+					for(i=0;i<AVE_LEN-1;i++)//10 shift_reg store recent 10 pxl error
 					{
-						pxl_err_reg[i][ch] = pxl_err_reg[i+1][ch];
+							pxl_err_reg[i][ch] = pxl_err_reg[i+1][ch];
 					}
-				}
-				
-				//calculate mean and variance of consecutive 10 pixel err
-
-				for(ch=0;ch<3;ch++)
-				{
-					//for(i=0;i<AVE_LEN;i++)//cal 10 pixel sum
-					//{
-					//	sum[ch] += pxl_err_reg[ch][i];
-					//}
-
+					
 					ave_num = (xcnt < AVE_LEN) ? (xcnt + 1) : AVE_LEN;//num used to divide sum, if xcnt < 9, ave_num = xcnt, otherwise it equals AVE_LEN;
 					average[ch] = sum[ch] / ave_num; 				  //compute consecutive ave_num pixel average, note: if len=4, ave=sum>>2;
 
@@ -199,38 +183,26 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 						count_ave = (xcnt-abnormal_pos) < DISTANCE ? count_ave + 2 : count_ave + 1; //consecutive abnormal pixel then count_ave++
 						abnormal_pos = xcnt; //record last abnomal pixel position
 
-						
-						//printf("\nWarning: cpnt %d'average error of %d pixels is more than 10\n", ch, ave_num);
-						//printf("position: hpos: %d, vpos: %d, cpnt: %d\n", xcnt, ycnt,ch);
-						//printf("average err = %1.2f, times= %d\n", average[ch], count_ave);
+						//printf("abnormal pos: x = %d, y = %d, cpnt = %d, average = %6.2f\n", xcnt, ycnt, ch, average[ch]);
+						fprintf(logfp, "abnormal pos: x = %d, y = %d, cpnt = %d, average = %6.2f\n", xcnt, ycnt, ch, average[ch]);
 
-
-						//fprintf(logfp, "\nWarning: cpnt %d'average error of %d pixels is more than 10\n", ch, ave_num);
-						//fprintf(logfp, "position: hpos: %d, vpos: %d, cpnt: %d\n", xcnt, ycnt,ch);
-						//fprintf(logfp, "average err = %1.2f, times= %d\n", average[ch], count_ave);
-						
 					}
-					
 
 					for(i=0;i<AVE_LEN;i++) //compute 10 pixel var
 					{
 						temp = pxl_err_reg[i][ch]-average[ch];
 
-						var[ch] += pow(temp,2);
+						var[ch] += pow(temp,2); //var accumulate
 
-						//standard[ch] = pow(var[ch],0.5);
 					}
 
-					sumVar += var[ch]; // +var, pow2 similar to err
-					//sumStandard += standard[ch]; // stantard is small (in general less than 1)
+					sumVar += var[ch];
+					var[ch] = 0;
 
-					//sum[ch] = 0;//do not need reset because "sum += new-old" above
+				//------
+#endif	
+				}//pixel end
 
-					var[ch] = 0;//everytime after compute var & average, need reset them in case accumulation unitl overflow ???
-
-				}//pixel end (opt psnr)
-				
-#endif
 			}//line end
 
 
@@ -251,15 +223,17 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 
 #ifdef PSNR_OPT
 
-		sumSqrError_plus_var = sumSqrError + sumVar/VAR_DIV ;//var
+		sumSqrError_plus_var = sumSqrError + sumVar * VAR_MUL ;//var
 		double ave_amount = 10000*(double)count_ave/(p_in->h * p_in->w);
 
-		printf("sumSqrError: %f\n",sumSqrError);
-		printf("sumSqrError_plus_var: %f\n",sumSqrError_plus_var);
-		printf("psnr adjust amount: %f\n", ave_amount);
+		//printf("sumSqrError: %f\n", sumSqrError);
+		//printf("sumVar: %f\n", sumVar);
+		//printf("sumSqrError + VAR_MUL*var: %f\n", sumSqrError_plus_var);
+		//printf("psnr adjust amount: %f\n", ave_amount);
 
 		fprintf(logfp,"sumSqrError: %f\n",sumSqrError);
-		fprintf(logfp,"sumSqrError_plus_var: %f\n",sumSqrError_plus_var);
+		fprintf(logfp,"sumVar: %f\n", sumVar);
+		fprintf(logfp,"sumSqrError + VAR_MUL*var: %f\n",sumSqrError_plus_var);
 		fprintf(logfp,"psnr adjust amount: %f\n", ave_amount);
 
 #endif
@@ -304,7 +278,7 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 		fprintf(logfp, "Max{|error|} = %4d   (R =%4d, G =%4d, B =%4d)   \n", MAX(maxErrR, MAX(maxErrG, maxErrB)), maxErrR, maxErrG, maxErrB);
 
 	} 
-	else //yuv
+	else //yuv (only consider about y)
 	{
 
 		for(ycnt=0; ycnt<p_in->h; ycnt++) 

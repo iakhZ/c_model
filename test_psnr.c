@@ -9,9 +9,11 @@ int main()
 {
     printf("the main function is running...\n");
 
-    char infname1[1024] = "t_Barbara_jpg.ppm";
+    char infname1[1024] = "test_face.ppm";
 
-    char infname2[1024] = "t_Barbara_gauss2.ppm";
+    //char infname2[1024] = "test_face_bar_h.ppm";
+    //char infname2[1024] = "test_face_bar_v.ppm";
+    char infname2[1024] = "test_face_gauss.ppm";
     //char infname2[1024] = "t_Barbara_bar.ppm";
 
     char fn_log[1024] = "log.txt";

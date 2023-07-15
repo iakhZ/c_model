@@ -1,12 +1,13 @@
-Filename: test_pic_86x82.ppm
-8.00 bits/pixel, 8 bits/component, RGB, 4:4:4, 43x82 slices, block_pred_enable=0
-sumSqrError: 135258.000000
-sumSqrError_plus_var: 209515.319444
+Filename: test_face.ppm
+8.00 bits/pixel, 8 bits/component, RGB, 4:4:4, 567x536 slices, block_pred_enable=0
+sumSqrError: 187062.000000
+sumVar: 268318.833333
+sumSqrError + VAR_MUL*var: 723699.666667
 psnr adjust amount: 0.000000
-PSNR over RGB channels =  40.07  
-PSNR ( var ) =  38.17  
-PSNR ( ave ) =  40.07  
-PSNR ( var & ave ) =  38.17  
-PSNR ( count ) =  40.07  
-Max{|error|} =   17   (R =  17, G =  11, B =  14)   
-PSNR cal spend time : 0.035000
+PSNR over RGB channels =  55.01  
+PSNR ( var ) =  49.13  
+PSNR ( ave ) =  55.01  
+PSNR ( var & ave ) =  49.13  
+PSNR ( count ) =  55.01  
+Max{|error|} =    7   (R =   5, G =   4, B =   7)   
+PSNR cal spend time : 0.250000

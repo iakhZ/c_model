@@ -1,1 +1,1 @@
-test_pic_86x82.ppm
+test_face.ppm
