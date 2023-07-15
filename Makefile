@@ -53,11 +53,12 @@ test: $(dsc_OBJS)
 % : %.c vdo.h utl.c utl.h dpx.h
 	gcc -O -o $@ $@.c utl.c dpx.c -lm -W -Wall -std=c99
 
-all: test 
+all:clean\
+	test 
 
 
 dsc:
-	dsc_test -F test.cfg
+	./dsc_test.exe -F test.cfg
 
 
 psnr:

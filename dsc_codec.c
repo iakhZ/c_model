@@ -274,8 +274,9 @@ int SamplePredict(
 	filt_e = FILT3(prevLine[h_offset_array_idx+1], prevLine[h_offset_array_idx+2], prevLine[h_offset_array_idx+3]); //+3 is 'f' described in spec
 
 	switch (predType) {
-	case PT_MAP:	// MAP prediction
-		// *MODEL NOTE* MN_MMAP
+	case PT_MAP:	
+	//  MMAP prediction
+	// *MODEL NOTE* MN_MMAP
 
 
 	//original mmap algorithm
@@ -289,7 +290,34 @@ int SamplePredict(
 		blend_e = e + diff;
 
 
-#ifndef MMAP_OPT
+#ifdef MMAP_OPT //optimized MMAP
+
+		if(hPos < SAMPLES_PER_UNIT)
+		{
+			if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
+				p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
+			else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
+				p = CLAMP(a + blend_d - blend_c /*+ (dsc_state->quantizedResidual[unit][0] * QuantDivisor[qLevel])*/,
+					        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
+			else    // Third pixel of group
+				p = CLAMP(a + blend_e - blend_c /*+ (dsc_state->quantizedResidual[unit][0] + dsc_state->quantizedResidual[unit][1])*QuantDivisor[qLevel*/,
+							MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
+		}
+		else
+		{
+			if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
+				p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
+			else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
+				p = CLAMP(a + blend_d - blend_c + (dsc_state->quantizedResidual_prev[unit][2] * QuantDivisor[qLevel]),//using previous group 3rd residual
+					        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
+			else    // Third pixel of group
+				p = CLAMP(a + blend_e - blend_c + (dsc_state->quantizedResidual_prev[unit][2] + dsc_state->quantizedResidual_prev[unit][2])*QuantDivisor[qLevel],
+							MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
+			break;
+		}
+
+#else //original MMAP
+
 		// Pixel on line above off the raster to the left gets same value as pixel below (ie., midpoint)
 		if (hPos/SAMPLES_PER_UNIT == 0)
 			blend_c = a;
@@ -303,43 +331,37 @@ int SamplePredict(
 						MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
 		break;
 
-#else
-		if(hPos < SAMPLES_PER_UNIT)
-		{
-			if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
-				p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
-			else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
-				p = CLAMP(a + blend_d - blend_c + (dsc_state->quantizedResidual[unit][0] * QuantDivisor[qLevel]),
-					        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
-			else    // Third pixel of group
-				p = CLAMP(a + blend_e - blend_c + (dsc_state->quantizedResidual[unit][0] + dsc_state->quantizedResidual[unit][1])*QuantDivisor[qLevel],
-							MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
-		}
-		else
-		{
-			if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
-				p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
-			else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
-				p = CLAMP(a + blend_d - blend_c + (dsc_state->quantizedResidual_prev[unit][2] * QuantDivisor[qLevel]),
-					        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
-			else    // Third pixel of group
-				p = CLAMP(a + blend_e - blend_c + (dsc_state->quantizedResidual_prev[unit][2] + dsc_state->quantizedResidual_prev[unit][2])*QuantDivisor[qLevel],
-							MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
-			break;
-		}
-
 #endif
 
 
 
 
 
-
-
-
-
-
 	case PT_LEFT:
+
+#ifdef MMAP_OPT
+
+		if(hPos < SAMPLES_PER_UNIT)//first 3 pixels special 
+		{
+			p = a;    // First pixel of group
+			if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
+				p = a;//CLAMP(a + (dsc_state->quantizedResidual_prev[unit][0] * QuantDivisor[qLevel]), 0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
+			else if((hPos % SAMPLES_PER_UNIT)==2)  // Third pixel of group
+				p = a;//CLAMP(a + (dsc_state->quantizedResidual_prev[unit][0] + dsc_state->quantizedResidual_prev[unit][1])*QuantDivisor[qLevel],
+							//0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
+		}
+		else	//other pixels
+		{
+			p = a;    // First pixel of group
+			if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
+				p = CLAMP(a + (dsc_state->quantizedResidual_prev[unit][2] * QuantDivisor[qLevel]), 0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
+			else if((hPos % SAMPLES_PER_UNIT)==2)  // Third pixel of group
+				p = CLAMP(a + (dsc_state->quantizedResidual_prev[unit][2] + dsc_state->quantizedResidual_prev[unit][2])*QuantDivisor[qLevel],
+							0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
+		}
+		break;
+
+#else
 		p = a;    // First pixel of group
 		if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
 			p = CLAMP(a + (dsc_state->quantizedResidual[unit][0] * QuantDivisor[qLevel]), 0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
@@ -347,6 +369,9 @@ int SamplePredict(
 			p = CLAMP(a + (dsc_state->quantizedResidual[unit][0] + dsc_state->quantizedResidual[unit][1])*QuantDivisor[qLevel],
 						0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
 		break;
+#endif
+		
+
 	default:  // PT_BLOCK+ofs = BLOCK predictor, starts at -1
 		// *MODEL NOTE* MN_BLOCK_PRED
 		bp_offset = (int)predType - (int)PT_BLOCK; // -bp_offset = bp_vector, range from 0 to -12
