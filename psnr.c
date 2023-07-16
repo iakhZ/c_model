@@ -62,7 +62,7 @@
 
 #define VAR_MUL		2	//used to divide var sum 
 #define DISTANCE	3	//used to determine the distance between two consecutive abnormal pixel
-#define AVE_LEN 	4	//number of consecutive pixels used to calculate the average/var/standard
+#define AVE_LEN 	10	//number of consecutive pixels used to calculate the average/var/standard
 #define CNT_SH		7   //single abnormal pixels count, shift then add to psnr (adjust according to picture's w&h?)
 #define AVE_THRE	30	//average value threshold
 
@@ -85,30 +85,25 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 	int maxErrG = 0;
 	int maxErrB = 0;
 
-	printf("\n---------------------------\nnow start to compute psnr\n---------------------------\n");
+	printf("\n-----------------------------------\nnow start to compute psnr\n-----------------------------------\n");
 
 #ifdef PSNR_OPT
+
 	int i;
-	int counter = 0;	  //single abnormal pixels counter
-	int	count_ave = 0; 	  //consecutive average err(out of range) counter
-	int ave_num = 0; 	  //number used to divide the average
-	int abnormal_pos = 0; //record most recent position where consecutive "average>=10" happened 
+	int counter = 0;	  					//single abnormal pixels counter
+	int	count_ave = 0; 	  					//consecutive average err(out of range) counter
+	int ave_num = 0; 	  					//number used to divide the average
+	int abnormal_pos = 0; 					//record most recent position where consecutive "average>=10" happened 
 
-    double pxl_err_reg[AVE_LEN][3] = {0}; //recent AVE_LEN pixels
-	double temp 	= 0; //x-E(x) used for Var
+    double pxl_err_reg[AVE_LEN][3] = {0}; 	//recent AVE_LEN pixels
+	double temp 	= 0; 					//x-E(x) used for Var
 
-	double sum[3] 	   = {0,0,0}; //recent 10 pixel cpnt err sum
-	double var[3] 	   = {0,0,0}; //recent 10 pixel cpnt var
-	double average[3]  = {0,0,0}; //recent 10 pixel cpnt average, equals to "sum/ave_num"
-	//double standard[3] = {0,0,0}; //recent 10 pixel cpnt standard, equals to var^0.5
+	double sum[3] 	   = {0,0,0}; 			//recent 10 pixel cpnt err sum
+	double var[3] 	   = {0,0,0}; 			//recent 10 pixel cpnt var
+	double average[3]  = {0,0,0}; 			//recent 10 pixel cpnt average, equals to "sum/ave_num"
 
-	double mse_plus_var = 0.0; //use sumSqrError_plus_var to calculate mse
-	double sumSqrError_plus_var = 0.0; //sumSqrError + sumVar
-	//double sumStandard = 0; //standard sum
-	double sumVar = 0; // var sum
+	double sumVar = 0; 						//sum of var
 
-	double m_psnr_var_ave = 0.0; //final modified psnr consider var and average
-	double m_psnr_count = 0.0; //final modified psnr consider single abnormal pixels
 #endif
 
 
@@ -168,14 +163,14 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 
 					if(abs(err)>10) counter++; //count the num of condition (diff of pic_i & pic_o)
 
-				//------
-					for(i=0;i<AVE_LEN-1;i++)//10 shift_reg store recent 10 pxl error
+				//----------------
+					for(i=0;i<AVE_LEN-1;i++)//10 shift reg store recent 10 pxl error
 					{
 							pxl_err_reg[i][ch] = pxl_err_reg[i+1][ch];
 					}
 					
-					ave_num = (xcnt < AVE_LEN) ? (xcnt + 1) : AVE_LEN;//num used to divide sum, if xcnt < 9, ave_num = xcnt, otherwise it equals AVE_LEN;
-					average[ch] = sum[ch] / ave_num; 				  //compute consecutive ave_num pixel average, note: if len=4, ave=sum>>2;
+					ave_num = (xcnt < AVE_LEN) ? (xcnt + 1) : AVE_LEN;	//num used to divide sum, if xcnt < 9, ave_num = xcnt, otherwise it equals AVE_LEN;
+					average[ch] = sum[ch] / ave_num; 				  	//compute consecutive ave_num pixel average, note: if len=4, ave=sum>>2;
 
 					//print waring message to log
 					if(average[ch]>AVE_THRE){
@@ -183,6 +178,7 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 						count_ave = (xcnt-abnormal_pos) < DISTANCE ? count_ave + 2 : count_ave + 1; //consecutive abnormal pixel then count_ave++
 						abnormal_pos = xcnt; //record last abnomal pixel position
 
+						/*abnormal pixel message print*/
 						//printf("abnormal pos: x = %d, y = %d, cpnt = %d, average = %6.2f\n", xcnt, ycnt, ch, average[ch]);
 						fprintf(logfp, "abnormal pos: x = %d, y = %d, cpnt = %d, average = %6.2f\n", xcnt, ycnt, ch, average[ch]);
 
@@ -199,7 +195,7 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 					sumVar += var[ch];
 					var[ch] = 0;
 
-				//------
+				//----------------
 #endif	
 				}//pixel end
 
@@ -221,23 +217,6 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 
 		}//frame end
 
-#ifdef PSNR_OPT
-
-		sumSqrError_plus_var = sumSqrError + sumVar * VAR_MUL ;//var
-		double ave_amount = 10000*(double)count_ave/(p_in->h * p_in->w);
-
-		//printf("sumSqrError: %f\n", sumSqrError);
-		//printf("sumVar: %f\n", sumVar);
-		//printf("sumSqrError + VAR_MUL*var: %f\n", sumSqrError_plus_var);
-		//printf("psnr adjust amount: %f\n", ave_amount);
-
-		fprintf(logfp,"sumSqrError: %f\n",sumSqrError);
-		fprintf(logfp,"sumVar: %f\n", sumVar);
-		fprintf(logfp,"sumSqrError + VAR_MUL*var: %f\n",sumSqrError_plus_var);
-		fprintf(logfp,"psnr adjust amount: %f\n", ave_amount);
-
-#endif
-	
 		if (sumSqrError != 0) //original psnr
 		{
 			mse = sumSqrError / ((double) (p_in->h * p_in->w * 3)); //3 cpnt 
@@ -245,32 +224,44 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 			psnr = 10.0 * log10( (double)Max*Max / mse );
 			printf("PSNR over RGB channels = %6.2f  \n", psnr);
 			fprintf(logfp, "PSNR over RGB channels = %6.2f  \n", psnr);
-		
 
 #ifdef PSNR_OPT
-			mse_plus_var= sumSqrError_plus_var / ((double) (p_in->h * p_in->w * 3)); //3 cpnt
-			m_psnr_var_ave = 10.0 * log10( (double)Max*Max / mse_plus_var ) - ave_amount;
 
-			double m_psnr_var = 10.0 * log10( (double)Max*Max / mse_plus_var );
-			double m_psnr_ave = 10.0 * log10( (double)Max*Max / mse ) - ave_amount;
+		double sumSqrError_plus_var = sumSqrError + sumVar * VAR_MUL ;//var
+		double ave_amount = 10000*(double)count_ave/(p_in->h * p_in->w);
 
-			m_psnr_count = 10.0 * log10( (double)Max*Max / mse ) - (double)(counter>>CNT_SH);//this param should be related to picture size
+		printf("\nsumSqrError: %f\n",sumSqrError);
+		printf("sum of var(sumVar): %f\n", sumVar);
+		printf("sumSqrError + VAR_MUL * sumVar: %f\n",sumSqrError_plus_var);
+		printf("psnr adjust amount: %f\n\n", ave_amount);
 
-			printf("PSNR ( var ) = %6.2f  \n", m_psnr_var);//feels like it's not very useful
-			printf("PSNR ( ave ) = %6.2f  \n", m_psnr_ave);
-			printf("PSNR ( var & ave ) = %6.2f  \n", m_psnr_var_ave);
-			printf("PSNR ( count ) = %6.2f  \n", m_psnr_count);
+		fprintf(logfp,"sumSqrError: %f\n",sumSqrError);
+		fprintf(logfp,"sum of var(sumVar): %f\n", sumVar);
+		fprintf(logfp,"sumSqrError + VAR_MUL * sumVar: %f\n",sumSqrError_plus_var);
+		fprintf(logfp,"psnr adjust amount: %f\n", ave_amount);
 
+		double mse_plus_var= sumSqrError_plus_var / ((double) (p_in->h * p_in->w * 3)); //3 cpnt
+		double m_psnr_var_ave = 10.0 * log10( (double)Max*Max / mse_plus_var ) - ave_amount;
 
-			fprintf(logfp, "PSNR ( var ) = %6.2f  \n", m_psnr_var);
-			fprintf(logfp, "PSNR ( ave ) = %6.2f  \n", m_psnr_ave);
-			fprintf(logfp, "PSNR ( var & ave ) = %6.2f  \n", m_psnr_var_ave);
-			fprintf(logfp, "PSNR ( count ) = %6.2f  \n", m_psnr_count);
+		double m_psnr_var = 10.0 * log10( (double)Max*Max / mse_plus_var );
+		double m_psnr_ave = 10.0 * log10( (double)Max*Max / mse ) - ave_amount;
+
+		double m_psnr_count = 10.0 * log10( (double)Max*Max / mse ) - (double)(counter>>CNT_SH);//this param should be related to picture size
+
+		printf("PSNR ( var ) = %6.2f, not necessary, it dosen't work well in codec, because mse is enough\n", m_psnr_var);//feels like it's not very useful
+		printf("PSNR ( ave ) = %6.2f\n", m_psnr_ave);
+		//printf("PSNR ( var & ave ) = %6.2f  \n", m_psnr_var_ave);
+		printf("PSNR ( count ) = %6.2f\n", m_psnr_count);
+
+		fprintf(logfp, "PSNR ( var ) = %6.2f, not necessary, it dosen't work well in codec, because mse is enough\n", m_psnr_var);
+		fprintf(logfp, "PSNR ( ave ) = %6.2f  \n", m_psnr_ave);
+		//fprintf(logfp, "PSNR ( var & ave ) = %6.2f  \n", m_psnr_var_ave);
+		fprintf(logfp, "PSNR ( count ) = %6.2f  \n", m_psnr_count);
 
 #endif
 
 		}
-		else //no error
+		else //no error then psnr = 0
 		{
 			printf("sumSqrError = 0\n",psnr);///used to debug
 			fprintf(logfp, "PSNR over RGB channels = Inf   \n");//problem here
@@ -340,6 +331,9 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 		else 
 			fprintf(logfp,"PSNR over chroma (V) channel = Inf   \n");
 
-	}		
+	}
+
+	printf("-----------------------------------\n");
+
 }
 
