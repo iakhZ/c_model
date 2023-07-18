@@ -333,10 +333,6 @@ int SamplePredict(
 
 #endif
 
-
-
-
-
 	case PT_LEFT:
 
 #ifdef MMAP_OPT

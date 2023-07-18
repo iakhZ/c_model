@@ -1,1 +1,1 @@
-t_Barbara.ppm
+test_face.ppm

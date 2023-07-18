@@ -1,47 +1,16 @@
-/***************************************************************************
-*    Copyright (c) 2013, Broadcom Corporation
-*    All rights reserved.
-*
-*  Statement regarding contribution of copyrighted materials to VESA:
-*
-*  This code is owned by Broadcom Corporation and is contributed to VESA
-*  for inclusion and use in its VESA Display Stream Compression specification.
-*  Accordingly, VESA is hereby granted a worldwide, perpetual, non-exclusive
-*  license to revise, modify and create derivative works to this code and
-*  VESA shall own all right, title and interest in and to any derivative 
-*  works authored by VESA.
-*
-*  Terms and Conditions
-*
-*  Without limiting the foregoing, you agree that your use
-*  of this software program does not convey any rights to you in any of
-*  Broadcom�s patent and other intellectual property, and you
-*  acknowledge that your use of this software may require that
-*  you separately obtain patent or other intellectual property
-*  rights from Broadcom or third parties.
-*
-*  Except as expressly set forth in a separate written license agreement
-*  between you and Broadcom, if applicable:
-*
-*  1. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED
-*  "AS IS" AND WITH ALL FAULTS AND BROADCOM MAKES NO PROMISES,
-*  REPRESENTATIONS OR WARRANTIES, EITHER EXPRESS, IMPLIED, STATUTORY, OR
-*  OTHERWISE, WITH RESPECT TO THE SOFTWARE.  BROADCOM SPECIFICALLY
-*  DISCLAIMS ANY AND ALL IMPLIED WARRANTIES OF TITLE, MERCHANTABILITY,
-*  NONINFRINGEMENT, FITNESS FOR A PARTICULAR PURPOSE, LACK OF VIRUSES,
-*  ACCURACY OR COMPLETENESS, QUIET ENJOYMENT, QUIET POSSESSION OR
-*  CORRESPONDENCE TO DESCRIPTION. YOU ASSUME THE ENTIRE RISK ARISING
-*  OUT OF USE OR PERFORMANCE OF THE SOFTWARE.
-* 
-*  2. TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL
-*  BROADCOM OR ITS LICENSORS BE LIABLE FOR (i) CONSEQUENTIAL, INCIDENTAL,
-*  SPECIAL, INDIRECT, OR EXEMPLARY DAMAGES WHATSOEVER ARISING OUT OF OR
-*  IN ANY WAY RELATING TO YOUR USE OF OR INABILITY TO USE THE SOFTWARE EVEN
-*  IF BROADCOM HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES; OR (ii)
-*  ANY AMOUNT IN EXCESS OF THE AMOUNT ACTUALLY PAID FOR THE SOFTWARE ITSELF
-*  OR U.S. $1, WHICHEVER IS GREATER. THESE LIMITATIONS SHALL APPLY
-*  NOTWITHSTANDING ANY FAILURE OF ESSENTIAL PURPOSE OF ANY LIMITED REMEDY.
-***************************************************************************/
+/*
+
+230716:
+	work:
+		1.abandon psnr(var): verify that mpsnr(var) is not necessary, it dosen't work well in codec, because mse is enough
+		2.abandon psnr(count): no need to usr error pixel counter because ave counter is enough
+		2.psnr(ave): psnr adjusted amount now is related to  100 * sqrt (counter/picture_size), adj amount is clamped in range 0-100
+	next:
+		1.luma is vision loss factor, take it into consideration
+		2.can refer to SSIM, it seems a good method, but process is complex to implement in hardware4         
+
+*/
+
 
 #ifdef WIN32
 #include <math.h>
@@ -58,13 +27,6 @@
 #endif
 
 #include "dsc_opt.h" //used for optimazing dsc algorithm
-
-
-#define VAR_MUL		2	//used to divide var sum 
-#define DISTANCE	3	//used to determine the distance between two consecutive abnormal pixel
-#define AVE_LEN 	10	//number of consecutive pixels used to calculate the average/var/standard
-#define CNT_SH		7   //single abnormal pixels count, shift then add to psnr (adjust according to picture's w&h?)
-#define AVE_THRE	30	//average value threshold
 
 
 /*
@@ -222,17 +184,25 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 			mse = sumSqrError / ((double) (p_in->h * p_in->w * 3)); //3 cpnt 
 
 			psnr = 10.0 * log10( (double)Max*Max / mse );
+
+			printf("\nsumSqrError: %f\n",sumSqrError);
+			printf("Max = %d\nmse = %f \ncount_ave = %d\n\n", Max, mse, count_ave);
+
 			printf("PSNR over RGB channels = %6.2f  \n", psnr);
 			fprintf(logfp, "PSNR over RGB channels = %6.2f  \n", psnr);
 
 #ifdef PSNR_OPT
 
-		double sumSqrError_plus_var = sumSqrError + sumVar * VAR_MUL ;//var
-		double ave_amount = 10000*(double)count_ave/(p_in->h * p_in->w);
+		double sumSqrError_plus_var = sumSqrError + sumVar * VAR_MUL ; //var
+		double count_ave_div_pic_size = (double)count_ave/ ((p_in->h * p_in->w)*3);
+		double count_ave_div_pic_size_sqrt = sqrt(count_ave_div_pic_size);
+		double ave_amount = 100 * count_ave_div_pic_size_sqrt;
+		printf("count_ave_div_pic_size_sqrt = %f\n", count_ave_div_pic_size_sqrt);
 
-		printf("\nsumSqrError: %f\n",sumSqrError);
-		printf("sum of var(sumVar): %f\n", sumVar);
-		printf("sumSqrError + VAR_MUL * sumVar: %f\n",sumSqrError_plus_var);
+		//-----------------
+
+		//printf("sum of var(sumVar): %f\n", sumVar);
+		//printf("sumSqrError + VAR_MUL * sumVar: %f\n",sumSqrError_plus_var);
 		printf("psnr adjust amount: %f\n\n", ave_amount);
 
 		fprintf(logfp,"sumSqrError: %f\n",sumSqrError);
@@ -248,15 +218,15 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 
 		double m_psnr_count = 10.0 * log10( (double)Max*Max / mse ) - (double)(counter>>CNT_SH);//this param should be related to picture size
 
-		printf("PSNR ( var ) = %6.2f, not necessary, it dosen't work well in codec, because mse is enough\n", m_psnr_var);//feels like it's not very useful
+		//printf("PSNR ( var ) = %6.2f, not necessary, it dosen't work well in codec, because mse is enough\n", m_psnr_var);//feels like it's not very useful
 		printf("PSNR ( ave ) = %6.2f\n", m_psnr_ave);
 		//printf("PSNR ( var & ave ) = %6.2f  \n", m_psnr_var_ave);
-		printf("PSNR ( count ) = %6.2f\n", m_psnr_count);
+		//printf("PSNR ( count ) = %6.2f,not necessary too\n", m_psnr_count);
 
 		fprintf(logfp, "PSNR ( var ) = %6.2f, not necessary, it dosen't work well in codec, because mse is enough\n", m_psnr_var);
-		fprintf(logfp, "PSNR ( ave ) = %6.2f  \n", m_psnr_ave);
+		fprintf(logfp, "PSNR ( ave ) = %6.2f\n", m_psnr_ave);
 		//fprintf(logfp, "PSNR ( var & ave ) = %6.2f  \n", m_psnr_var_ave);
-		fprintf(logfp, "PSNR ( count ) = %6.2f  \n", m_psnr_count);
+		fprintf(logfp, "PSNR ( count ) = %6.2f, not necessary too\n", m_psnr_count);
 
 #endif
 
@@ -266,6 +236,7 @@ void compute_and_display_PSNR(pic_t *p_in, pic_t *p_out, int bpp, FILE *logfp)
 			printf("sumSqrError = 0\n",psnr);///used to debug
 			fprintf(logfp, "PSNR over RGB channels = Inf   \n");//problem here
 		}
+
 		fprintf(logfp, "Max{|error|} = %4d   (R =%4d, G =%4d, B =%4d)   \n", MAX(maxErrR, MAX(maxErrG, maxErrB)), maxErrR, maxErrG, maxErrB);
 
 	} 
