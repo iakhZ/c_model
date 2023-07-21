@@ -2159,7 +2159,7 @@ dsc_state_t *InitializeDSCState( dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state )
 		dsc_state->ichIndexUnitMap[0] = 3;  // put first ICH index with 2nd luma unit
 		dsc_state->ichIndexUnitMap[1] = 1;
 		dsc_state->ichIndexUnitMap[2] = 2;
-	} else {
+	} else {//444 420 mode
 		dsc_state->unitsPerGroup = 3;
 		dsc_state->numComponents = 3;
 		dsc_state->numSsps = 3;
@@ -2173,7 +2173,7 @@ dsc_state_t *InitializeDSCState( dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state )
 		dsc_state->history.valid[i] = 0;
 	for(i=0; i<dsc_state->numComponents; ++i)
 	{
-		dsc_state->history.pixels[i] = (unsigned int*)malloc(sizeof(unsigned int)*ICH_SIZE);
+		dsc_state->history.pixels[i] = (unsigned int*)malloc(sizeof(unsigned int)*ICH_SIZE);//must free memory in case memory leakage
 	}
 	dsc_state->ichSelected = 0;
 
@@ -2671,7 +2671,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 	{
 		range[i] = 1<<dsc_cfg->bits_per_component;
 		dsc_state->cpntBitDepth[i] = dsc_cfg->bits_per_component;
-		if(dsc_cfg->convert_rgb && (i!=0) && (i!=3) && (dsc_cfg->bits_per_component!=16))
+		if(dsc_cfg->convert_rgb && (i!=0) && (i!=3) && (dsc_cfg->bits_per_component!=16))//Co Cg range 1 more bit(except 16bpc)
 		{
 			range[i] *= 2;
 			dsc_state->cpntBitDepth[i]++;//the bit depth of co & cg is greater than Y. 
@@ -2679,7 +2679,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 	}
 
 	// initialize DSC variables
-	for ( cpnt = 0; cpnt<dsc_state->numComponents; cpnt++ )
+	for ( cpnt = 0; cpnt<dsc_state->numComponents; cpnt++ )//
 	{
 		int initValue;
 		initValue = 1 << (dsc_state->cpntBitDepth[cpnt]-1);
@@ -2700,13 +2700,13 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 	  	    
 		}
 		for (i=0; i<ICH_SIZE; ++i) //ich size is 32
-			dsc_state->history.pixels[cpnt][i] = initValue;  // Needed for 4:2:0 chroma
+			dsc_state->history.pixels[cpnt][i] = initValue;  // Needed for 4:2:0 chroma / initvalue = 128(8bpc, midpoint)
 	}
 
 	//--------------------------------------------------------------------------
 	// sample range handling
 	//
-	dsc_state->groupCountLine = 0;
+	dsc_state->groupCountLine = 0; //Group count for current line
 	
 	// If decoder, read first group's worth of data
 	if ( !isEncoder )
@@ -2721,10 +2721,10 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 	vPos = 0;
 	hPos = 0;
 	sampModCnt = 0;
-	done = 0;
+	done = 0;//process a frame then set to 1
 	new_quant = 0;
 	qp = 0;
-
+	//after all parameter set, core algorithm starts from here >_< !!
 	while ( !done ) {//process 1 frame
 		dsc_state->vPos = vPos;
 		if(sampModCnt==0)

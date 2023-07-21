@@ -1,0 +1,12 @@
+Filename: test_face.ppm
+10.00 bits/pixel, 8 bits/component, RGB, 4:4:4, 567x536 slices, block_pred_enable=0
+PSNR over RGB channels =  62.98  
+sumSqrError: 29829.000000
+sum of var(sumVar): 30678.000000
+sumSqrError + VAR_MUL * sumVar: 91185.000000
+psnr adjust amount: 0.000000
+PSNR ( var ) =  58.13, not necessary, it dosen't work well in codec, because mse is enough
+PSNR ( ave ) =  62.98
+PSNR ( count ) =  62.98, not necessary too
+Max{|error|} =    5   (R =   5, G =   5, B =   5)   
+PSNR cal spend time : 0.119000

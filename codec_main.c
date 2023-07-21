@@ -141,7 +141,7 @@ static int colorDifferenceSiting;
 static int bitDepthConvRounding;
 
 
-static  cmdarg_t cmd_args[] = {
+static  cmdarg_t cmd_args[] = { //here define many params(form an struct array), read from cfg file in function parse_cfgfile !!! every line means a param.
 
 	// The array arguments have to be first:
 	{ IVARG, NULL,    "RC_OFFSET",            "-rcofs",  0,  15},  // RC offset values
@@ -336,7 +336,7 @@ static int parse_cfgfile (char* fn, cmdarg_t *cmdargs)
     fn[0] = '\0';
     while (NULL != fgets(line, CFGLINE_LEN, fd)) // we re-use the storage
     {
-        assign_line(line, cmdargs);    
+        assign_line(line, cmdargs);    //read cfg params here !!!!  parse from line to line
     }
     if (!feof(fd))
     {
@@ -365,9 +365,9 @@ static int assign_line (char* line, cmdarg_t *cmdargs)
     {
         UErr("unknown configuration field '%s'", line);
     }
-    if ('\0' != filepath[0])   // config file
+    if ('\0' != filepath[0])   // config file  '\0'is null
     {
-        parse_cfgfile(filepath, cmdargs);
+        parse_cfgfile(filepath, cmdargs);//here!!
     }
     return 0;
 }
@@ -931,7 +931,7 @@ int check_qp_for_overflow(dsc_cfg_t *dsc_cfg, int pixelsPerGroup)
 *    PPS data structure
 ************************************************************************
 */
-void generate_rc_parameters(dsc_cfg_t *dsc_codec)
+void generate_rc_parameters(dsc_cfg_t *dsc_codec)//if generateRcParameters = 1(in pps), then call this function to automatically set rc params
 {
 	int qp_bpc_modifier;
 	int i;
@@ -1226,7 +1226,7 @@ void populate_pps(dsc_cfg_t *dsc_codec, int *slicew, int *sliceh)
 	dsc_codec->slice_height = *sliceh;
 	RANGE_CHECK("slice_height", dsc_codec->slice_height, 1, 65535);
 
-	if (generateRcParameters)
+	if (generateRcParameters)//if generateRcParameters = 1(in pps), then call this function to automatically set rc params
 		generate_rc_parameters(dsc_codec);
 
 	if (!sliceHeight)  // Auto-detect optimal size height
@@ -1357,9 +1357,9 @@ int main(int argc, char *argv[])
 	memset(&dsc_codec, 0, sizeof(dsc_cfg_t));
 
 	/* process input arguments */
-    process_args(argc, argv, cmd_args);
+    process_args(argc, argv, cmd_args); //read cfg in this function, cmd_args is params read out
 
-	if (function == 3)
+	if (function == 3)//print pps
 	{
 		dsc_codec.native_420 = native420;
 		dsc_codec.native_422 = native422;
@@ -1412,7 +1412,7 @@ int main(int argc, char *argv[])
 	sprintf(dsc_file_path, "%s/", fn_o);
 #endif
 
-	while ((strlen(infname)>0) || !feof(list_fp) || multiFrameYuvFile)
+	while ((strlen(infname)>0) || !feof(list_fp) || multiFrameYuvFile)//feof: detect file end
 	{
 		sprintf(frmnumstr, "_%06d", frameNumber);
 		memset(pps, 0, PPS_SIZE);
@@ -1501,7 +1501,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		if (function == 0 || function == 1)
+		if (function == 0 || function == 1)//encode
 		{
 			dsc_codec.bits_per_component = bitsPerComponent;
 			dsc_codec.native_420 = native420;
@@ -1533,8 +1533,8 @@ int main(int argc, char *argv[])
 			if ((fgetc(bits_fp) != 'D') || (fgetc(bits_fp) != 'S') || (fgetc(bits_fp) != 'C') || (fgetc(bits_fp) != 'F'))
 				UErr("DSC file read error, invalid magic number\n");
 			for (i = 0; i<PPS_SIZE; ++i)
-				pps[i] = fgetc(bits_fp);
-			parse_pps(pps, &dsc_codec);
+				pps[i] = fgetc(bits_fp);//get pps from dsc file
+			parse_pps(pps, &dsc_codec);//decoder: pass pps↑ to current design 
 
 			// Removed from PPS in v1.44:
 			dsc_codec.very_flat_qp = 1 + (2 * (dsc_codec.bits_per_component - 8));
@@ -1543,8 +1543,8 @@ int main(int argc, char *argv[])
 			// Estimate rate buffer size based on delays:
 
 			bitsPerPixel = (float)(dsc_codec.bits_per_pixel / 16.0);
-			dsc_codec.rcb_bits = (int)ceil((dsc_codec.initial_xmit_delay + dsc_codec.initial_dec_delay) * bitsPerPixel);
-
+			dsc_codec.rcb_bits = (int)ceil((dsc_codec.initial_xmit_delay + dsc_codec.initial_dec_delay) * bitsPerPixel);//
+			//↑↑ Rate control buffer size (in bits); not in PPS, used only in C model for checking overflow
 			sliceh = dsc_codec.slice_height;
 			dsc_codec.mux_word_size = (dsc_codec.bits_per_component >= 12) ? 64 : 48;
 
@@ -1558,7 +1558,7 @@ int main(int argc, char *argv[])
 		{
 			ip->alpha = 0;
 
-			if (dsc_codec.bits_per_component > ip->bits)
+			if (dsc_codec.bits_per_component > ip->bits)//if bpc(set) > bpc(actual), then conver bpc
 			{
 				printf("WARNING: Source picture bit depth is %d, converting to %d bits\n", ip->bits, dsc_codec.bits_per_component);
 				ip2 = convertbits(ip, dsc_codec.bits_per_component);
@@ -1683,11 +1683,11 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "Cannot use .dsc file as input\n");
 				exit(1);
 			}
-			dsc_codec.pic_width = ref_pic->w;
+			dsc_codec.pic_width = ref_pic->w; //get width & height params directly from input picture, because pps doesn't define this 2 params.
 			dsc_codec.pic_height = ip->h;
-			populate_pps(&dsc_codec, &slicew, &sliceh);
+			populate_pps(&dsc_codec, &slicew, &sliceh);//here pass pps (read from cfg file by func: parse_cfgfile) to dsc_codec
 
-			if (function==1 || dscFileOutput)
+			if (function==1 || dscFileOutput)//encoder
 			{
 #ifdef WIN32
 				if (frameNumber > 0 || multiFrameYuvFile)		// Output one DSC file per frame
@@ -1707,7 +1707,7 @@ int main(int argc, char *argv[])
 				}
 				//fwrite((void *)&dsc_codec, sizeof(dsc_cfg_t), 1, bits_fp);
 				fputc('D', bits_fp); fputc('S', bits_fp); fputc('C', bits_fp); fputc('F', bits_fp);
-				write_pps(pps, &dsc_codec);
+				write_pps(pps, &dsc_codec);//pps is a buffer, write dsc_codec params in pps
 				for (i=0; i<PPS_SIZE; ++i)
 					fputc(pps[i], bits_fp);//write a character(pps[i]) to bits_fp
 			}
