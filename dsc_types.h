@@ -172,7 +172,7 @@ typedef struct dsc_state_s {
 	int rcSizeUnit[MAX_UNITS_PER_GROUP];  ///< Size for each unit assuming size was perfectly predicted
 	int rcSizeGroup;		///< Sum of RcSizeUnits for previous group
 	int codedGroupSize;		///< Size of previous group in bits
-	int predictedSize[MAX_UNITS_PER_GROUP];  ///< Predicted sizes for next DSU code 
+	int predictedSize[MAX_UNITS_PER_GROUP];  ///< Predicted sizes for next DSU code (DSU: delta size unit)
 	PRED_TYPE *prevLinePred;  ///< BP selection decsion buffer (since model calculates BP offset one line ahead of time)
 	int bpCount;			///< Number of times in a row block prediction had the lowest cost
 	int lastEdgeCount;		///< How long ago we saw the last edge (for BP)

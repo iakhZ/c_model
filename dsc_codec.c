@@ -2064,7 +2064,7 @@ dsc_state_t *InitializeDSCState( dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state )
 	memset(dsc_state, 0, sizeof(dsc_state_t));
 
 	// Initialize quantization table
-	switch(dsc_cfg->bits_per_component)
+	switch(dsc_cfg->bits_per_component)//choose corresponding qp-qlevel mapping table for different bpc
 	{
 	case 8:
 		dsc_state->quantTableLuma = qlevel_luma_8bpc;
@@ -2105,17 +2105,17 @@ dsc_state_t *InitializeDSCState( dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state )
 	dsc_state->prevFirstFlat     = -1;
 	dsc_state->unitsPerGroup     = 3;
 	for ( i=0; i<MAX_UNITS_PER_GROUP; i++ ) {
-		dsc_state->unitCType[i] = i;
-		dsc_state->unitSspMap[i] = i;
-		dsc_state->unitStartHPos[i] = 0;
-		dsc_state->predictedSize[i] = 0;
+		dsc_state->unitCType[i] = i;	//Component type for each unit
+		dsc_state->unitSspMap[i] = i;	//Substream processor associated with each unit
+		dsc_state->unitStartHPos[i] = 0; //Starting pixel offset for each unit
+		dsc_state->predictedSize[i] = 0; //Predicted sizes for next DSU code
 		for ( j=0; j<SAMPLES_PER_UNIT; j++ )
-			dsc_state->quantizedResidual[i][j] = 0;
+			dsc_state->quantizedResidual[i][j] = 0; //Quantized residuals for current group
 	}
 	for (i=0; i<MAX_PIXELS_PER_GROUP; ++i)
-		dsc_state->ichIndexUnitMap[i] = i%3;
+		dsc_state->ichIndexUnitMap[i] = i%3;	//Unit associated with each ICH index (pixel) within an ICH grouping
 	for ( i=0; i<MAX_UNITS_PER_GROUP; i++ ) {
-		dsc_state->rcSizeUnit[i] = 0;
+		dsc_state->rcSizeUnit[i] = 0;	//Size for each unit assuming size was perfectly predicted
 	}
 
 	for (i=0; i<dsc_state->numComponents; ++i)
@@ -2123,23 +2123,23 @@ dsc_state_t *InitializeDSCState( dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state )
 		for(j=0; j<BP_RANGE; ++j)
 		{
 			for(k=0; k<BP_SIZE; ++k)
-				dsc_state->lastErr[i][k][j] = 0;
+				dsc_state->lastErr[i][k][j] = 0; //3-pixel SAD's for each of the past 3 3-pixel-wide prediction blocks for each BP offset
 		}
 	}
-
+	//BP selection decsion buffer (since model calculates BP offset one line ahead of time)
 	dsc_state->prevLinePred = (PRED_TYPE *)malloc(sizeof(PRED_TYPE) * (dsc_state->sliceWidth+PRED_BLK_SIZE-1) / PRED_BLK_SIZE);
 	assert(dsc_state->prevLinePred != NULL);
 	// Sets last predictor of line to MAP, since BP search is not done for partial groups
 	memset(dsc_state->prevLinePred, 0, sizeof(PRED_TYPE) * (dsc_state->sliceWidth+PRED_BLK_SIZE-1) / PRED_BLK_SIZE);  
 	
-	for(i=0; i<MAX_NUM_SSPS; ++i)
+	for(i=0; i<MAX_NUM_SSPS; ++i)//substream processors
 	{
-		fifo_init(&(dsc_state->shifter[i]), (dsc_cfg->mux_word_size + MAX_SE_SIZE + 7) / 8);
-		fifo_init(&(dsc_state->encBalanceFifo[i]), ((dsc_cfg->mux_word_size + MAX_SE_SIZE - 1) * (MAX_SE_SIZE) + 7)/8);//byte num
+		fifo_init(&(dsc_state->shifter[i]), (dsc_cfg->mux_word_size + MAX_SE_SIZE + 7) / 8);//fifo_init(fifo,size_in_bytes),if mux_word_size%8 >= 1,then need 1 more byte
+		fifo_init(&(dsc_state->encBalanceFifo[i]), ((dsc_cfg->mux_word_size + MAX_SE_SIZE - 1) * (MAX_SE_SIZE) + 7)/8);
 		fifo_init(&(dsc_state->seSizeFifo[i]), (8 * (dsc_cfg->mux_word_size + MAX_SE_SIZE - 1) + 7)/8);
 	}
 
-	if(dsc_cfg->bits_per_component == 16)
+	if(dsc_cfg->bits_per_component == 16)//bpc = 16 special case, because max_se_size = 64, i.e. 64 = 4*16
 	{
 		dsc_state->maxSeSize[0] = dsc_state->maxSeSize[1] = dsc_state->maxSeSize[2] = dsc_state->maxSeSize[3] = 64;
 	} else {
@@ -2165,10 +2165,10 @@ dsc_state_t *InitializeDSCState( dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state )
 		dsc_state->numSsps = 3;
 	}
 	dsc_state->native420 = dsc_cfg->native_420;
-	dsc_state->ichIndicesInGroup = dsc_state->pixelsInGroup;
+	dsc_state->ichIndicesInGroup = dsc_state->pixelsInGroup;//Number of ICH indices to represent current group
 
 	dsc_state->history.valid = (int *)malloc(sizeof(int)*ICH_SIZE);
-	assert(dsc_state->history.valid != NULL);
+	assert(dsc_state->history.valid != NULL);//assert: if the condition not met then exit
 	for(i=0; i<ICH_SIZE; ++i)
 		dsc_state->history.valid[i] = 0;
 	for(i=0; i<dsc_state->numComponents; ++i)
@@ -2638,13 +2638,13 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 #endif
 
 	orig_op = op;
-	if ( dsc_cfg->convert_rgb ) {
+	if ( dsc_cfg->convert_rgb ) {//RGB input
 		// convert rgb to ycocg
 		pic = temp_pic[0];
 		opic = temp_pic[1];
 		op = opic;
 		rgb2ycocg(ip, pic, dsc_cfg);
-	} else {
+	} else {//YCbCr input
 		// no color conversion
 		pic = ip;
 	}
