@@ -7,7 +7,7 @@
 
 int main()
 {
-    printf("the main function is running...\n");
+    printf("\n\n\n---------------\nthe main function is running...\n\n");
 
     char infname1[1024] = "test_face.ppm";
     //char infname2[1024] = "test_face.ppm";

@@ -1143,7 +1143,7 @@ int IsOrigFlatHIndex(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos)
 		return(0);
 	}
 
-	for (cpnt=0; cpnt<dsc_state->numComponents; ++cpnt)
+	for (cpnt=0; cpnt<dsc_state->numComponents; ++cpnt)//all cpnt meet condition
 	{
 		vf_thresh = dsc_cfg->flatness_det_thresh;
 		max = -1; min = 99999;
@@ -1526,7 +1526,7 @@ void VLCUnit(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int unit, int *quantize
 	if ((unit == unit_to_send_fflag) && ((dsc_state->groupCount % GROUPS_PER_SUPERGROUP) == 3) && //1st unit of 4th group in supergroup
 		IsFlatnessInfoSent(dsc_cfg, qp))
 	{
-		if (dsc_state->prevFirstFlat<0)
+		if (dsc_state->prevFirstFlat<0)//If -1, none of the 4 group set are flat, otherwise indicates which group is the one where flatness starts
 		{
 			if (PRINT_DEBUG_VLC)
 				fprintf(g_fp_dbg, "Flatness flag=0\n");
@@ -2384,7 +2384,7 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 		}
 		else
 		{
-			pred2use = dsc_state->prevLinePred[hPos/PRED_BLK_SIZE];
+			pred2use = dsc_state->prevLinePred[hPos/PRED_BLK_SIZE];//line 1069
 		}
 		residual_index = (sampModCnt-dsc_state->unitStartHPos[unit]);
 			
@@ -2411,7 +2411,7 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 			//
 			// find residual and quantize it
 			//
-			actual_x = dsc_state->origLine[cpnt][hPos+PADDING_LEFT];
+			actual_x = dsc_state->origLine[cpnt][hPos+PADDING_LEFT];//Current line original samples (for encoder)
 
 			err_raw = actual_x - pred_x; //residual
 
