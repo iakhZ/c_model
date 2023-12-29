@@ -9,4 +9,4 @@ PSNR ( var ) =  49.27, not necessary, it dosen't work well in codec, because mse
 PSNR ( ave ) =  53.82
 PSNR ( count ) =  53.82, not necessary too
 Max{|error|} =    9   (R =   8, G =   5, B =   9)   
-PSNR cal spend time : 0.153000
+PSNR cal spend time : 0.219000
