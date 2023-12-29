@@ -54,7 +54,8 @@ test: $(dsc_OBJS)
 	gcc -O -o $@ $@.c utl.c dpx.c -lm -W -Wall -std=c99
 
 all:clean\
-	test 
+	test\
+	dsc
 
 
 dsc:

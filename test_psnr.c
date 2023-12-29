@@ -17,10 +17,10 @@ int main()
     //char infname2[1024] = "test_face_long_bar.ppm";
     //char infname2[1024] = "test_face_gauss.ppm";
     //char infname2[1024] = "test_face_gauss1.ppm";
-    //char infname2[1024] = "test_face_gauss2.ppm";
+    char infname2[1024] = "test_face_gauss2.ppm";
     //char infname2[1024] = "t_Barbara_bar.ppm";
     //char infname2[1024] = "test_face_salt&pepper1.ppm";
-    char infname2[1024] = "test_face_salt&pepper2.ppm";
+    //char infname2[1024] = "test_face_salt&pepper2.ppm";
 
     char fn_log[1024] = "log.txt";
 

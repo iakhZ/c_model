@@ -15,7 +15,7 @@
 *
 *  Without limiting the foregoing, you agree that your use
 *  of this software program does not convey any rights to you in any of
-*  Broadcom’s patent and other intellectual property, and you
+*  Broadcomï¿½s patent and other intellectual property, and you
 *  acknowledge that your use of this software may require that
 *  you separately obtain patent or other intellectual property
 *  rights from Broadcom or third parties.

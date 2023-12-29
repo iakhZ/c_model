@@ -4,5 +4,8 @@
 *.dsc
 *.bmp
 *.ppm
-*.logqqq
-
+*.log
+*.ppm
+asd
+*.txt
+pictures/*

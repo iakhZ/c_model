@@ -65,8 +65,8 @@
 #include "logging.h"
 #include "rc_tables.h"
 
-#define WIN32
-#define PATH_MAX 1024
+//#define WIN32
+//#define PATH_MAX 1024
 #define MAX_OPTNAME_LEN 200
 #define CFGLINE_LEN ((PATH_MAX) + MAX_OPTNAME_LEN)
 #define RANGE_CHECK(s,a,b,c) { if(((a)<(b))||((a)>(c))) { UErr("%s out of range, needs to be between %d and %d\n",s,b,c); } }
@@ -1316,8 +1316,7 @@ int main(int argc, char *argv[])
 #else
 int main(int argc, char *argv[])
 #endif
-{
-	pic_t *ip=NULL, *ip2, *ref_pic, *op_dsc;
+{	pic_t *ip=NULL, *ip2, *ref_pic, *op_dsc;
 	dsc_cfg_t dsc_codec;
 	unsigned char **buf;
 	char f[PATH_MAX], infname[PATH_MAX], bitsfname[2 * PATH_MAX + 20];
@@ -1762,12 +1761,16 @@ int main(int argc, char *argv[])
 				dsc_codec.ystart = ys;
 
 				// Encoder
-				if ((function==0) || (function==1))
+				if ((function==0) || (function==1)){
+					printf("\n*****\nencoding ...\n*****\n");
 					DSC_Encode(&dsc_codec, ip, op_dsc, buf2, temp_pic, chunk_sizes[xs]);
-
+				}
 				// Decoder
-				if ((function==0) || (function == 2))
+				if ((function==0) || (function == 2)){
+					printf("\n*****\ndecoding ...\n*****\n");
 					DSC_Decode(&dsc_codec, op_dsc, buf2, temp_pic); 
+				}
+
 			}
 			if(function == 1 || dscFileOutput)
 				write_dsc_data(buf, dsc_codec.chunk_size, bits_fp, dsc_codec.vbr_enable, slices_per_line, dsc_codec.slice_height, chunk_sizes);

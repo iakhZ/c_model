@@ -230,6 +230,8 @@ int GetQpAdjPredSize(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int unit)
 	return (pred_size);
 }
 
+int mmap_opt_flag_enc = 0; //optimazed mmap flag encoder
+int mmap_opt_flag_dec = 0; //optimazed mmap flag decoder
 
 //! Get the predicted sample value
 /*! \param prevLine  Array of samples from previous (reconstructed) line
@@ -266,6 +268,12 @@ int SamplePredict(
 	d = prevLine[h_offset_array_idx+1];//1 cpnt
 	e = prevLine[h_offset_array_idx+2];//2 cpnt
 	a = currLine[h_offset_array_idx-1];
+
+#ifdef DEBUG
+	printf("------\nvpos=%d, hpos=%d, unit=%x\nc=%x, b=%x, d=%x, e=%x, a=%x\n", dsc_state->vPos, hPos,unit,c,b,d,e,a);
+#endif
+
+
 #define FILT3(a,b,c) (((a)+2*(b)+(c)+2)>>2)
 //#define FILT3(a,b,c) (((a)+(b)+(c))/3)
 	filt_c = FILT3(prevLine[h_offset_array_idx-2], prevLine[h_offset_array_idx-1], prevLine[h_offset_array_idx]);
@@ -291,36 +299,27 @@ int SamplePredict(
 
 
 #ifdef MMAP_OPT //optimized MMAP
+		if(!mmap_opt_flag_enc) printf("optimazed mmap is running...\n");
+		mmap_opt_flag_enc ++ ;
+		
+		if (hPos/SAMPLES_PER_UNIT == 0)
+			blend_c = a;
 
-		if(hPos < SAMPLES_PER_UNIT)
-		{
-			if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
-				p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
-			else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
-				p = CLAMP(a + blend_d - blend_c /*+ (dsc_state->quantizedResidual[unit][0] * QuantDivisor[qLevel])*/,
-					        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
-			else    // Third pixel of group
-				p = CLAMP(a + blend_e - blend_c /*+ (dsc_state->quantizedResidual[unit][0] + dsc_state->quantizedResidual[unit][1])*QuantDivisor[qLevel*/,
-							MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
-		}
-		else
-		{
-			if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
-				p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
-			else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
-				p = CLAMP(a + blend_d - blend_c + (dsc_state->quantizedResidual_prev[unit][2] * QuantDivisor[qLevel]),//using previous group 3rd residual
-					        MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
-			else    // Third pixel of group
-				p = CLAMP(a + blend_e - blend_c + (dsc_state->quantizedResidual_prev[unit][2] + dsc_state->quantizedResidual_prev[unit][2])*QuantDivisor[qLevel],
-							MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
-			break;
-		}
+		if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
+			p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
+		else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
+			p = CLAMP(a + blend_d - blend_c, MIN(MIN(a, blend_b), blend_d), MAX(MAX(a, blend_b), blend_d));
+		else    // Third pixel of group
+			p = CLAMP(a + blend_e - blend_c, MIN(MIN(a,blend_b), MIN(blend_d, blend_e)), MAX(MAX(a,blend_b), MAX(blend_d, blend_e)));
+		break;
 
 #else //original MMAP
-
+		if(!mmap_opt_flag_enc) printf("original mmap is running...\n");
+		mmap_opt_flag_enc ++;
 		// Pixel on line above off the raster to the left gets same value as pixel below (ie., midpoint)
 		if (hPos/SAMPLES_PER_UNIT == 0)
 			blend_c = a;
+
 		if ((hPos % SAMPLES_PER_UNIT)==0)  // First pixel of group
 			p = CLAMP(a + blend_b - blend_c, MIN(a, blend_b), MAX(a, blend_b));
 		else if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
@@ -333,31 +332,20 @@ int SamplePredict(
 
 #endif
 
-	case PT_LEFT:
+	case PT_LEFT: //1st line
 
 #ifdef MMAP_OPT
 
-		if(hPos < SAMPLES_PER_UNIT)//first 3 pixels special 
-		{
-			p = a;    // First pixel of group
-			if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
-				p = a;//CLAMP(a + (dsc_state->quantizedResidual_prev[unit][0] * QuantDivisor[qLevel]), 0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
-			else if((hPos % SAMPLES_PER_UNIT)==2)  // Third pixel of group
-				p = a;//CLAMP(a + (dsc_state->quantizedResidual_prev[unit][0] + dsc_state->quantizedResidual_prev[unit][1])*QuantDivisor[qLevel],
-							//0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
-		}
-		else	//other pixels
-		{
-			p = a;    // First pixel of group
-			if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
-				p = CLAMP(a + (dsc_state->quantizedResidual_prev[unit][2] * QuantDivisor[qLevel]), 0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
-			else if((hPos % SAMPLES_PER_UNIT)==2)  // Third pixel of group
-				p = CLAMP(a + (dsc_state->quantizedResidual_prev[unit][2] + dsc_state->quantizedResidual_prev[unit][2])*QuantDivisor[qLevel],
-							0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
-		}
+
+		p = a;    // First pixel of group
+		if ((hPos % SAMPLES_PER_UNIT)==1)
+			p = CLAMP(a, 0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
+		else if((hPos % SAMPLES_PER_UNIT)==2)  // Third pixel of group
+			p = CLAMP(a, 0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
+		
 		break;
 
-#else
+#else //original PT_LEFT
 		p = a;    // First pixel of group
 		if ((hPos % SAMPLES_PER_UNIT)==1)   // Second pixel of group
 			p = CLAMP(a + (dsc_state->quantizedResidual[unit][0] * QuantDivisor[qLevel]), 0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
@@ -365,8 +353,7 @@ int SamplePredict(
 			p = CLAMP(a + (dsc_state->quantizedResidual[unit][0] + dsc_state->quantizedResidual[unit][1])*QuantDivisor[qLevel],
 						0, (1<<dsc_state->cpntBitDepth[cpnt])-1);
 		break;
-#endif
-		
+#endif	
 
 	default:  // PT_BLOCK+ofs = BLOCK predictor, starts at -1
 		// *MODEL NOTE* MN_BLOCK_PRED
@@ -2109,8 +2096,11 @@ dsc_state_t *InitializeDSCState( dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state )
 		dsc_state->unitSspMap[i] = i;	//Substream processor associated with each unit
 		dsc_state->unitStartHPos[i] = 0; //Starting pixel offset for each unit
 		dsc_state->predictedSize[i] = 0; //Predicted sizes for next DSU code
-		for ( j=0; j<SAMPLES_PER_UNIT; j++ )
+		for ( j=0; j<SAMPLES_PER_UNIT; j++ ){
 			dsc_state->quantizedResidual[i][j] = 0; //Quantized residuals for current group
+			dsc_state->quantizedResidual_prev[i][j] = 128;//Quantized residuals for previous group (modified);
+			//printf("\nquantizedRsidual_prev initialized\n");
+		}
 	}
 	for (i=0; i<MAX_PIXELS_PER_GROUP; ++i)
 		dsc_state->ichIndexUnitMap[i] = i%3;	//Unit associated with each ICH index (pixel) within an ICH grouping
@@ -2386,7 +2376,7 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 		{
 			pred2use = dsc_state->prevLinePred[hPos/PRED_BLK_SIZE];//line 1069
 		}
-		residual_index = (sampModCnt-dsc_state->unitStartHPos[unit]);
+		residual_index = (sampModCnt-dsc_state->unitStartHPos[unit]);//unitStartHpos = 0
 			
 		if (dsc_cfg->native_420)
 		{
@@ -2414,7 +2404,8 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 			actual_x = dsc_state->origLine[cpnt][hPos+PADDING_LEFT];//Current line original samples (for encoder)
 
 			err_raw = actual_x - pred_x; //residual
-
+			
+			//printf("\nvpos:%d, hPos:%d, unit:%d, actual_x:%d, prd_x:%d, rsdu=%d\n",vPos, hPos, unit, actual_x, pred_x, err_raw);
 			if (sampModCnt==0)//1st sample in a group
 				dsc_state->primaryQp = qp;
 
@@ -2431,19 +2422,9 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 
 
 
-
-			//***************************************************************************************************//
-			//current group residual store as previous group residual(optimized) before 
-			dsc_state->quantizedResidual_prev[unit][residual_index] = dsc_state->quantizedResidual[unit][residual_index];
-
-			//***************************************************************************************************//
-
-
-
-
-
 			// store to array
 			dsc_state->quantizedResidual[unit][residual_index] = err_q;
+
 
 			// Calculate midpoint prediction error:
 			dsc_state->quantizedResidualMid[unit][residual_index] = QuantizeResidual(err_raw, qlevel);
@@ -2463,7 +2444,9 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 			err_q = dsc_state->quantizedResidual[unit][residual_index];
 
 			qlevel = MapQpToQlevel(dsc_cfg, dsc_state, qp, cpnt);
-
+#ifdef DEBUG			
+			printf("\nvpos:%d, hPos:%d, unit:%d, prd_x:%d, quant_rsdu=%d,qlevel=%d\n",vPos, hPos, unit, pred_x, err_q,qlevel);
+#endif
 			// Use midpoint prediction if selected
 			if (dsc_state->useMidpoint[unit])
 			{
@@ -2478,7 +2461,9 @@ void PredictionLoop(dsc_cfg_t *dsc_cfg, dsc_state_t *dsc_state, int hPos, int vP
 		// *MODEL NOTE* MN_IQ_RECON
 		maxval = (1<<dsc_state->cpntBitDepth[cpnt]) - 1; //cpnt max value
 		recon_x = CLAMP(pred_x + (err_q << qlevel), 0, maxval); // recon cpnt value
-
+#ifdef DEBUG
+		printf("recon_x=%d\n------\n", recon_x);
+#endif
 		if (dsc_state->isEncoder)
 		{
 			int absErr;
@@ -2682,7 +2667,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 	for ( cpnt = 0; cpnt<dsc_state->numComponents; cpnt++ )//
 	{
 		int initValue;
-		initValue = 1 << (dsc_state->cpntBitDepth[cpnt]-1);
+		initValue = 1 << (dsc_state->cpntBitDepth[cpnt]-1); //was 128/256 when 8cbd/9cbd 
 
 		dsc_state->currLine[cpnt] = currLine[cpnt] = (int*) malloc(lbufWidth*sizeof(int));
 		dsc_state->prevLine[cpnt] = prevLine[cpnt] = (int*) malloc(lbufWidth*sizeof(int));
@@ -2691,7 +2676,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
             dsc_state->prevLine[cpnt+1] = prevLine[cpnt+1] = (int*) malloc(lbufWidth*sizeof(int));
 		  	 
 		dsc_state->origLine[cpnt] = (int*) malloc(lbufWidth*sizeof(int));
-		for ( i=0; i<lbufWidth; i++ ) {
+		for ( i=0; i<lbufWidth; i++ ) {//set initial value of line buffer
 			currLine[cpnt][i] = initValue; //init value is 128
 			prevLine[cpnt][i] = initValue; 
 	  	    //SBR:OPTION 5
@@ -2699,7 +2684,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
     	        prevLine[cpnt+1][i] = initValue;
 	  	    
 		}
-		for (i=0; i<ICH_SIZE; ++i) //ich size is 32
+		for (i=0; i<ICH_SIZE; ++i) //ich size is 32, ich LUT init value is 128(Y) or 256(Co/Cg)
 			dsc_state->history.pixels[cpnt][i] = initValue;  // Needed for 4:2:0 chroma / initvalue = 128(8bpc, midpoint)
 	}
 
@@ -3005,8 +2990,10 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 			if (dsc_state->isEncoder)
 				dsc_state->groupCountLine = 0;
 
-			if ( vPos >= dsc_cfg->slice_height ) //encode complete
+			if ( vPos >= dsc_cfg->slice_height ){ //encode complete
 				done = 1;
+				printf("\n------\ndone=1\n------\n");
+			}
 			else if (isEncoder)
 				PopulateOrigLine(dsc_cfg, dsc_state, pic, vPos);
 		}
@@ -3113,7 +3100,7 @@ int DSC_Algorithm(int isEncoder, dsc_cfg_t* dsc_cfg, pic_t* ip, pic_t* op, unsig
 	\param temp_pic  Array of two pictures to use as temporary storage for YCoCg conversions
 	\return          Number of bits in the resulting compressed bitstream */
 int DSC_Encode(dsc_cfg_t *dsc_cfg, pic_t *p_in, pic_t *p_out, unsigned char *cmpr_buf, pic_t **temp_pic, int *chunk_sizes)
-{
+{	
 	return DSC_Algorithm(1, dsc_cfg, p_in, p_out, cmpr_buf, temp_pic, chunk_sizes);//1: encoder
 }
 

@@ -1,9 +1,10 @@
 
 #define	PSNR_OPT
 #define MMAP_OPT
+//#define DEBUG
 
+/*below are psnr params*/
 
-//psnr macros
 #define VAR_MUL		2	//used to divide var sum 
 #define DISTANCE	3	//used to determine the distance between two consecutive abnormal pixel
 #define AVE_LEN 	3	//number of consecutive pixels used to calculate the average/var/standard

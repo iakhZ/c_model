@@ -200,6 +200,8 @@ void rgb2ycocg(pic_t *ip, pic_t *op, dsc_cfg_t *dsc_cfg)
 			cg = g - t;
 			y = t + (cg>>1);
 
+			//printf("\n-----\nr=%d, g=%d, b=%d\ny=%d, co=%d, cg=%d\n",r,g,b,y,co,cg);
+
 			op->data.yuv.y[i][j] = y;
 #ifdef REDUCE_CHROMA_16BPC
 			if(ip->bits == 16)
